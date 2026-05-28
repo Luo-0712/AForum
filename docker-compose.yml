@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  # MySQL 8.0 - 业务数据库
+  mysql:
+    image: mysql:8.0
+    container_name: aforum-mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
+      MYSQL_DATABASE: aforum
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+    command: --default-authentication-plugin=caching_sha2_password
+    networks:
+      - aforum-network
+
+  # PostgreSQL 16 + pgvector - 向量数据库
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: aforum-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: aforum_vector
+      POSTGRES_USER: ${PG_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-postgres}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - aforum-network
+
+  # Redis 7 - 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: aforum-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD:-}
+    volumes:
+      - redis-data:/data
+    networks:
+      - aforum-network
+
+  # Elasticsearch 8.x - 搜索引擎（预留）
+  # elasticsearch:
+  #   image: elasticsearch:8.11.0
+  #   container_name: aforum-elasticsearch
+  #   restart: unless-stopped
+  #   ports:
+  #     - "9200:9200"
+  #   environment:
+  #     - discovery.type=single-node
+  #     - xpack.security.enabled=false
+  #   volumes:
+  #     - elasticsearch-data:/usr/share/elasticsearch/data
+  #   networks:
+  #     - aforum-network
+
+  # RabbitMQ - 消息队列（预留）
+  # rabbitmq:
+  #   image: rabbitmq:3-management-alpine
+  #   container_name: aforum-rabbitmq
+  #   restart: unless-stopped
+  #   ports:
+  #     - "5672:5672"
+  #     - "15672:15672"
+  #   environment:
+  #     RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+  #     RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+  #   volumes:
+  #     - rabbitmq-data:/var/lib/rabbitmq
+  #   networks:
+  #     - aforum-network
+
+volumes:
+  mysql-data:
+  postgres-data:
+  redis-data:
+  # elasticsearch-data:
+  # rabbitmq-data:
+
+networks:
+  aforum-network:
+    driver: bridge

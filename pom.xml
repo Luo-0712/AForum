@@ -16,19 +16,23 @@
 
     <properties>
         <java.version>21</java.version>
-        <mybatis-plus.version>3.5.9</mybatis-plus.version>
+        <mybatis-plus.version>3.5.5</mybatis-plus.version>
         <jjwt.version>0.12.6</jjwt.version>
         <springdoc.version>2.6.0</springdoc.version>
         <mapstruct.version>1.6.3</mapstruct.version>
         <lombok.version>1.18.36</lombok.version>
-        <pgvector.version>0.1.6</pgvector.version>
     </properties>
 
     <dependencies>
         <!-- Spring Boot Starters -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webmvc</artifactId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -58,6 +62,13 @@
             <version>${mybatis-plus.version}</version>
         </dependency>
 
+        <!-- PageHelper -->
+        <dependency>
+            <groupId>com.github.pagehelper</groupId>
+            <artifactId>pagehelper-spring-boot-starter</artifactId>
+            <version>1.4.7</version>
+        </dependency>
+
         <!-- Database Drivers -->
         <dependency>
             <groupId>com.mysql</groupId>
@@ -68,13 +79,6 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
-        </dependency>
-
-        <!-- pgvector -->
-        <dependency>
-            <groupId>com.pgvector</groupId>
-            <artifactId>pgvector</artifactId>
-            <version>${pgvector.version}</version>
         </dependency>
 
         <!-- Flyway -->
@@ -139,6 +143,8 @@
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+
     </dependencies>
 
     <build>

@@ -1,14 +1,34 @@
-import { Form, Input, Button, Card, Typography, message } from 'antd';
-import { UserOutlined, LockOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../store/auth';
+import { Link, useNavigate } from 'react-router-dom';
+import { Button, Form, Input, message } from 'antd';
+import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import api from '../api/axios';
-
-const { Title } = Typography;
+import AuthShell from '../components/AuthShell';
+import { useAuthStore } from '../store/auth';
 
 interface LoginForm {
   username: string;
   password: string;
+}
+
+interface AuthUser {
+  id: number;
+  username: string;
+  nickname: string;
+  avatar: string;
+  userType: number;
+  roles?: string[];
+  permissions?: string[];
+}
+
+interface ApiResponse<T> {
+  code: number;
+  message: string;
+  data: T;
+}
+
+interface LoginData {
+  accessToken: string;
+  user: AuthUser;
 }
 
 export default function Login() {
@@ -17,7 +37,7 @@ export default function Login() {
 
   const onFinish = async (values: LoginForm) => {
     try {
-      const res: any = await api.post('/auth/login', values);
+      const res = await api.post<unknown, ApiResponse<LoginData>>('/auth/login', values);
       if (res.code === 200) {
         setToken(res.data.accessToken);
         setUser(res.data.user);
@@ -26,32 +46,27 @@ export default function Login() {
       } else {
         message.error(res.message || '登录失败');
       }
-    } catch (error) {
+    } catch {
       message.error('登录失败');
     }
   };
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#f0f2f5' }}>
-      <Card style={{ width: 400 }}>
-        <Title level={3} style={{ textAlign: 'center' }}>登录</Title>
-        <Form name="login" onFinish={onFinish}>
-          <Form.Item name="username" rules={[{ required: true, message: '请输入用户名' }]}>
-            <Input prefix={<UserOutlined />} placeholder="用户名" />
-          </Form.Item>
-          <Form.Item name="password" rules={[{ required: true, message: '请输入密码' }]}>
-            <Input.Password prefix={<LockOutlined />} placeholder="密码" />
-          </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit" block>
-              登录
-            </Button>
-          </Form.Item>
-          <div style={{ textAlign: 'center' }}>
-            还没有账号？ <a onClick={() => navigate('/register')}>立即注册</a>
-          </div>
-        </Form>
-      </Card>
-    </div>
+    <AuthShell title="欢迎回来" subtitle="继续你的开发者讨论流。">
+      <Form name="login" layout="vertical" onFinish={onFinish}>
+        <Form.Item name="username" rules={[{ required: true, message: '请输入用户名' }]}>
+          <Input prefix={<UserOutlined />} placeholder="用户名" />
+        </Form.Item>
+        <Form.Item name="password" rules={[{ required: true, message: '请输入密码' }]}>
+          <Input.Password prefix={<LockOutlined />} placeholder="密码" />
+        </Form.Item>
+        <Button type="primary" htmlType="submit" block>
+          登录
+        </Button>
+        <div className="auth-switch">
+          还没有账号？ <Link to="/register">立即注册</Link>
+        </div>
+      </Form>
+    </AuthShell>
   );
 }

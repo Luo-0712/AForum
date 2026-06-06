@@ -1,16 +1,18 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Card, Empty, Input, List, Pagination, Space, Spin, Tag, Typography } from 'antd';
-import { EyeOutlined, LikeOutlined, MessageOutlined, SearchOutlined } from '@ant-design/icons';
+import { Empty, Input, Pagination, Spin } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
 import { listPosts } from '../api/posts';
+import PostPreviewCard from '../components/PostPreviewCard';
 
-const { Title, Text } = Typography;
 const { Search } = Input;
 
 export default function PostList() {
-  const [page, setPage] = useState(1);
-  const [keyword, setKeyword] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const keyword = searchParams.get('keyword') || '';
+  const pageParam = Number(searchParams.get('page') || 1);
+  const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+
   const { data, isLoading } = useQuery({
     queryKey: ['posts', page, keyword],
     queryFn: () => listPosts({ pageNum: page, pageSize: 10, keyword }),
@@ -20,63 +22,71 @@ export default function PostList() {
   const total = Number(pageData?.total || 0);
   const current = Number(pageData?.current || page);
   const size = Number(pageData?.size || 10);
+  const posts = pageData?.records || [];
+
+  const handleSearch = (value: string) => {
+    const nextKeyword = value.trim();
+    setSearchParams(nextKeyword ? { keyword: nextKeyword } : {});
+  };
+
+  const handlePageChange = (nextPage: number) => {
+    const nextParams: Record<string, string> = {};
+    if (keyword) {
+      nextParams.keyword = keyword;
+    }
+    if (nextPage > 1) {
+      nextParams.page = String(nextPage);
+    }
+    setSearchParams(nextParams);
+  };
 
   return (
     <div className="forum-page">
       <div className="page-heading">
         <div>
-          <Title level={2}>帖子</Title>
-          <Text type="secondary">最新发布的社区讨论</Text>
+          <span className="eyebrow">Posts</span>
+          <h1>帖子</h1>
+          <p>最新发布的社区讨论。</p>
         </div>
-        <Search
-          allowClear
-          enterButton={<SearchOutlined />}
-          placeholder="搜索标题或正文"
-          style={{ maxWidth: 320 }}
-          onSearch={(value) => {
-            setKeyword(value.trim());
-            setPage(1);
-          }}
-        />
+        <div className="page-toolbar">
+          <Search
+            key={keyword}
+            allowClear
+            enterButton={<SearchOutlined />}
+            placeholder="搜索标题或正文"
+            defaultValue={keyword}
+            onSearch={handleSearch}
+          />
+        </div>
       </div>
 
       {isLoading ? (
-        <div className="center-panel"><Spin /></div>
-      ) : (
+        <div className="center-panel">
+          <Spin />
+        </div>
+      ) : posts.length > 0 ? (
         <>
-          <List
-            dataSource={pageData?.records || []}
-            renderItem={(item) => (
-              <Card className="post-card">
-                <Space direction="vertical" size={10} style={{ width: '100%' }}>
-                  <Space size={8} wrap>
-                    {item.boardName && <Tag color="processing">{item.boardName}</Tag>}
-                    {item.categoryName && <Tag>{item.categoryName}</Tag>}
-                    <Text type="secondary">{item.authorName}</Text>
-                  </Space>
-                  <Link className="post-title" to={`/posts/${item.id}`}>{item.title}</Link>
-                  <Text type="secondary">{item.summary || '暂无摘要'}</Text>
-                  <Space size={8} wrap>
-                    <Tag icon={<EyeOutlined />}>{item.viewCount || 0}</Tag>
-                    <Tag icon={<LikeOutlined />}>{item.likeCount || 0}</Tag>
-                    <Tag icon={<MessageOutlined />}>{item.commentCount || 0}</Tag>
-                  </Space>
-                </Space>
-              </Card>
-            )}
-            locale={{ emptyText: <Empty description="暂无帖子" /> }}
-          />
+          <div className="post-list">
+            {posts.map((post) => (
+              <PostPreviewCard key={post.id} post={post} />
+            ))}
+          </div>
           {total > 0 && (
             <Pagination
               align="end"
               current={current}
               pageSize={size}
               total={total}
-              onChange={setPage}
+              onChange={handlePageChange}
               showSizeChanger={false}
+              className="post-pagination"
             />
           )}
         </>
+      ) : (
+        <div className="section-card center-panel">
+          <Empty description="暂无帖子" />
+        </div>
       )}
     </div>
   );

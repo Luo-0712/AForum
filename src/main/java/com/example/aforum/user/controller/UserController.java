@@ -1,5 +1,6 @@
 package com.example.aforum.user.controller;
 
+import com.example.aforum.auth.service.AuthService;
 import com.example.aforum.auth.vo.UserInfoVO;
 import com.example.aforum.common.result.Result;
 import com.example.aforum.common.util.SecurityUtils;
@@ -15,11 +16,11 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
+    private final AuthService authService;
 
     @GetMapping("/me")
     public Result<UserInfoVO> getCurrentUser() {
-        Long userId = SecurityUtils.getCurrentUserId();
-        return Result.success(userService.getUserById(userId));
+        return Result.success(authService.getCurrentUserInfo());
     }
 
     @PutMapping("/me")

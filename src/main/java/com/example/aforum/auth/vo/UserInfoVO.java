@@ -19,6 +19,7 @@ public class UserInfoVO {
     private Integer userType;
     private Integer status;
     private List<String> roles;
+    private List<String> permissions;
     private LocalDateTime createdAt;
     private LocalDateTime lastLoginAt;
 }

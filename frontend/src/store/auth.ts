@@ -1,12 +1,14 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-interface UserInfo {
+export interface UserInfo {
   id: number;
   username: string;
   nickname: string;
   avatar: string;
   userType: number;
+  roles?: string[];
+  permissions?: string[];
 }
 
 interface AuthState {

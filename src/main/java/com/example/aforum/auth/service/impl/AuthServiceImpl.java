@@ -10,6 +10,7 @@ import com.example.aforum.auth.mapper.RoleMapper;
 import com.example.aforum.auth.mapper.UserRoleMapper;
 import com.example.aforum.auth.security.JwtUtils;
 import com.example.aforum.auth.service.AuthService;
+import com.example.aforum.auth.service.AuthorizationService;
 import com.example.aforum.auth.vo.LoginVO;
 import com.example.aforum.auth.vo.UserInfoVO;
 import com.example.aforum.auth.vo.UserInfoVOMapper;
@@ -33,7 +34,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -47,6 +47,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final UserInfoVOMapper userInfoVOMapper;
+    private final AuthorizationService authorizationService;
 
     private static final ConcurrentHashMap<String, Long> TOKEN_BLACKLIST = new ConcurrentHashMap<>();
 
@@ -100,7 +101,7 @@ public class AuthServiceImpl implements AuthService {
 
         // 6. 构建响应
         UserInfoVO userInfo = userInfoVOMapper.toVO(user);
-        userInfo.setRoles(List.of("USER"));
+        fillAuthInfo(userInfo, user.getId());
 
         return LoginVO.builder()
             .accessToken(accessToken)
@@ -143,16 +144,13 @@ public class AuthServiceImpl implements AuthService {
         user.setLastLoginIp(clientIp);
         userMapper.updateById(user);
 
-        // 5. 查询角色
-        List<String> roles = getRoleCodesByUserId(user.getId());
-
-        // 6. 生成 token
+        // 5. 生成 token
         String accessToken = jwtUtils.generateToken(user.getId(), user.getUsername());
         String refreshToken = jwtUtils.generateRefreshToken(user.getId(), user.getUsername());
 
-        // 7. 构建响应
+        // 6. 构建响应
         UserInfoVO userInfo = userInfoVOMapper.toVO(user);
-        userInfo.setRoles(roles);
+        fillAuthInfo(userInfo, user.getId());
 
         return LoginVO.builder()
             .accessToken(accessToken)
@@ -193,10 +191,9 @@ public class AuthServiceImpl implements AuthService {
         }
 
         String newAccessToken = jwtUtils.generateToken(userId, username);
-        List<String> roles = getRoleCodesByUserId(userId);
 
         UserInfoVO userInfo = userInfoVOMapper.toVO(user);
-        userInfo.setRoles(roles);
+        fillAuthInfo(userInfo, userId);
 
         return LoginVO.builder()
             .accessToken(newAccessToken)
@@ -234,27 +231,14 @@ public class AuthServiceImpl implements AuthService {
         if (user == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "用户不存在");
         }
-        List<String> roles = getRoleCodesByUserId(userId);
         UserInfoVO userInfo = userInfoVOMapper.toVO(user);
-        userInfo.setRoles(roles);
+        fillAuthInfo(userInfo, userId);
         return userInfo;
     }
 
-    private List<String> getRoleCodesByUserId(Long userId) {
-        List<UserRole> userRoles = userRoleMapper.selectList(
-            new LambdaQueryWrapper<UserRole>().eq(UserRole::getUserId, userId)
-        );
-        if (userRoles.isEmpty()) {
-            return List.of();
-        }
-        List<Long> roleIds = userRoles.stream()
-            .map(UserRole::getRoleId)
-            .collect(Collectors.toList());
-        List<Role> roles = roleMapper.selectBatchIds(roleIds);
-        return roles.stream()
-            .filter(r -> r.getStatus() == 0)
-            .map(Role::getCode)
-            .collect(Collectors.toList());
+    private void fillAuthInfo(UserInfoVO userInfo, Long userId) {
+        userInfo.setRoles(authorizationService.getRoleCodesByUserId(userId));
+        userInfo.setPermissions(authorizationService.getPermissionCodesByUserId(userId));
     }
 
     @Scheduled(fixedRate = 600000)

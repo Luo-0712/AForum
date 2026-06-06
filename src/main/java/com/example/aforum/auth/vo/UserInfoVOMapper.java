@@ -8,5 +8,6 @@ import org.mapstruct.Mapping;
 public interface UserInfoVOMapper {
 
     @Mapping(target = "roles", ignore = true)
+    @Mapping(target = "permissions", ignore = true)
     UserInfoVO toVO(User user);
 }

@@ -1,8 +1,7 @@
-import { Outlet } from 'react-router-dom';
-import { Layout, Menu, Input, Button, Space, Dropdown } from 'antd';
-import { UserOutlined, LogoutOutlined, SettingOutlined, PlusOutlined } from '@ant-design/icons';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Button, Dropdown, Input, Layout, Menu } from 'antd';
+import { LogoutOutlined, PlusOutlined, SettingOutlined, UserOutlined } from '@ant-design/icons';
 import { useAuthStore } from '../store/auth';
-import { useNavigate } from 'react-router-dom';
 
 const { Header, Content, Footer } = Layout;
 const { Search } = Input;
@@ -10,11 +9,15 @@ const { Search } = Input;
 export default function MainLayout() {
   const { user, token, logout } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
+
+  const selectedKey = location.pathname.startsWith('/posts') ? 'posts' : 'home';
+  const displayName = user?.nickname || user?.username || '我的账号';
 
   const userMenuItems = [
     {
@@ -40,53 +43,60 @@ export default function MainLayout() {
   ];
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <h1 style={{ color: 'white', margin: 0, marginRight: 50, cursor: 'pointer' }} onClick={() => navigate('/')}>
+    <Layout className="app-layout">
+      <Header className="forum-header">
+        <div className="forum-header__inner">
+          <button className="brand-mark ghost-button" type="button" onClick={() => navigate('/')}>
             AForum
-          </h1>
+          </button>
+
           <Menu
-            theme="dark"
+            className="forum-menu"
             mode="horizontal"
+            selectedKeys={[selectedKey]}
             items={[
               { key: 'home', label: '首页', onClick: () => navigate('/') },
               { key: 'posts', label: '帖子', onClick: () => navigate('/posts') },
             ]}
-            style={{ flex: 1, minWidth: 0 }}
           />
+
+          <div className="forum-actions">
+            <Search
+              allowClear
+              placeholder="搜索帖子"
+              onSearch={(value) => {
+                const keyword = value.trim();
+                navigate(keyword ? `/posts?keyword=${encodeURIComponent(keyword)}` : '/posts');
+              }}
+            />
+            {token && (
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/posts/new')}>
+                发帖
+              </Button>
+            )}
+            {token ? (
+              <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+                <Button icon={<UserOutlined />}>{displayName}</Button>
+              </Dropdown>
+            ) : (
+              <>
+                <Button type="text" onClick={() => navigate('/login')}>
+                  登录
+                </Button>
+                <Button type="primary" onClick={() => navigate('/register')}>
+                  注册
+                </Button>
+              </>
+            )}
+          </div>
         </div>
-        <Space>
-          <Search placeholder="搜索" style={{ width: 200 }} />
-          {token && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/posts/new')}>
-              发帖
-            </Button>
-          )}
-          {token ? (
-            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-              <Button type="text" style={{ color: 'white' }}>
-                {user?.nickname || user?.username}
-              </Button>
-            </Dropdown>
-          ) : (
-            <Space>
-              <Button type="text" style={{ color: 'white' }} onClick={() => navigate('/login')}>
-                登录
-              </Button>
-              <Button type="primary" onClick={() => navigate('/register')}>
-                注册
-              </Button>
-            </Space>
-          )}
-        </Space>
       </Header>
-      <Content style={{ padding: '24px 50px' }}>
+
+      <Content className="forum-content">
         <Outlet />
       </Content>
-      <Footer style={{ textAlign: 'center' }}>
-        AForum &copy; {new Date().getFullYear()} - 论坛系统
-      </Footer>
+
+      <Footer className="forum-footer">AForum &copy; {new Date().getFullYear()} - 开发者讨论社区</Footer>
     </Layout>
   );
 }

@@ -1,30 +1,55 @@
-import { useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, Button, Card, Divider, Empty, Form, Input, List, Space, Spin, Tag, Typography, message } from 'antd';
-import { EyeOutlined, LikeOutlined, MessageOutlined, SendOutlined } from '@ant-design/icons';
+import { Alert, Avatar, Button, Empty, Form, Input, Spin, Typography, message } from 'antd';
+import { EyeOutlined, LikeOutlined, MessageOutlined, SendOutlined, UserOutlined } from '@ant-design/icons';
 import { createComment, getPost, listComments } from '../api/posts';
+import ForumStatPill from '../components/ForumStatPill';
 import { useAuthStore } from '../store/auth';
 
-const { Title, Paragraph, Text } = Typography;
+const { Paragraph, Title } = Typography;
 const { TextArea } = Input;
+
+interface CommentForm {
+  content: string;
+}
+
+function formatDate(value?: string) {
+  if (!value) {
+    return '刚刚';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
 
 export default function PostDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const token = useAuthStore((state) => state.token);
   const queryClient = useQueryClient();
-  const [form] = Form.useForm();
+  const [form] = Form.useForm<CommentForm>();
   const postId = id || '';
 
   const postQuery = useQuery({
     queryKey: ['post', postId],
     queryFn: () => getPost(postId),
-    enabled: !!postId,
+    enabled: Boolean(postId),
   });
 
   const commentsQuery = useQuery({
     queryKey: ['comments', postId],
     queryFn: () => listComments(postId),
-    enabled: !!postId,
+    enabled: Boolean(postId),
   });
 
   const commentMutation = useMutation({
@@ -43,70 +68,127 @@ export default function PostDetail() {
   });
 
   if (postQuery.isLoading) {
-    return <div className="center-panel"><Spin /></div>;
+    return (
+      <div className="center-panel">
+        <Spin />
+      </div>
+    );
   }
 
   const post = postQuery.data?.data;
 
   if (!post) {
     return (
-      <Card>
-        <Empty description="帖子不存在或尚未发布" />
-      </Card>
+      <div className="forum-page">
+        <div className="section-card center-panel">
+          <Empty description="帖子不存在或尚未发布" />
+        </div>
+      </div>
     );
   }
 
+  const comments = commentsQuery.data?.data || [];
+
   return (
     <div className="forum-page detail-page">
-      <Card className="section-card">
-        <Space direction="vertical" size={12} style={{ width: '100%' }}>
-          <Space wrap>
-            {post.boardName && <Tag color="processing">{post.boardName}</Tag>}
-            {post.categoryName && <Tag>{post.categoryName}</Tag>}
-            {post.suggestedTags?.map((tag) => <Tag color="gold" key={tag}>{tag}</Tag>)}
-          </Space>
-          <Title level={2}>{post.title}</Title>
-          <Text type="secondary">作者：{post.authorName}</Text>
-          {post.auditReason && <Alert type="info" showIcon message={post.auditReason} />}
-          <Paragraph className="post-content">{post.content}</Paragraph>
-          <Space size={8} wrap>
-            <Tag icon={<EyeOutlined />}>{post.viewCount || 0}</Tag>
-            <Tag icon={<LikeOutlined />}>{post.likeCount || 0}</Tag>
-            <Tag icon={<MessageOutlined />}>{post.commentCount || 0}</Tag>
-          </Space>
-        </Space>
-      </Card>
+      <article className="section-card post-detail-card">
+        <div className="post-detail__meta">
+          {post.boardName && <span className="forum-chip forum-chip--primary">{post.boardName}</span>}
+          {post.categoryName && <span className="forum-chip">{post.categoryName}</span>}
+          {post.suggestedTags?.map((tag) => (
+            <span className="forum-chip forum-chip--warning" key={tag}>
+              {tag}
+            </span>
+          ))}
+          <span>{formatDate(post.createdAt)}</span>
+        </div>
 
-      <Card className="section-card" title="评论">
-        {token && (
-          <>
-            <Form form={form} onFinish={(values) => commentMutation.mutate(values.content)}>
-              <Form.Item name="content" rules={[{ required: true, message: '请输入评论内容' }]}>
-                <TextArea rows={4} placeholder="写下你的回应" maxLength={5000} showCount />
-              </Form.Item>
-              <Form.Item>
-                <Button type="primary" icon={<SendOutlined />} htmlType="submit" loading={commentMutation.isPending}>
-                  发布评论
-                </Button>
-              </Form.Item>
-            </Form>
-            <Divider />
-          </>
+        <Title className="post-detail__title" level={1}>
+          {post.title}
+        </Title>
+
+        <div className="post-detail__author">
+          <Avatar size={34} icon={<UserOutlined />} />
+          <span>作者：{post.authorName || '匿名用户'}</span>
+        </div>
+
+        {post.coverUrl && (
+          <div className="post-cover">
+            <img src={post.coverUrl} alt="" loading="lazy" />
+          </div>
         )}
-        <List
-          loading={commentsQuery.isLoading}
-          dataSource={commentsQuery.data?.data || []}
-          renderItem={(item) => (
-            <List.Item>
-              <List.Item.Meta
-                title={item.authorName}
-                description={<Paragraph className="comment-content">{item.content}</Paragraph>}
-              />
-            </List.Item>
+
+        {post.auditReason && <Alert className="detail-alert" type="info" showIcon message={post.auditReason} />}
+
+        <Paragraph className="post-content">{post.content}</Paragraph>
+
+        <div className="post-preview-card__footer">
+          <ForumStatPill icon={<EyeOutlined />} value={post.viewCount || 0} label="浏览" />
+          <ForumStatPill icon={<LikeOutlined />} value={post.likeCount || 0} label="点赞" />
+          <ForumStatPill icon={<MessageOutlined />} value={post.commentCount || 0} label="评论" />
+        </div>
+      </article>
+
+      <section className="section-card comments-card">
+        <div className="section-heading">
+          <div>
+            <span className="eyebrow">Comments</span>
+            <h2>评论</h2>
+            <p>{comments.length} 条回复</p>
+          </div>
+        </div>
+
+        {token ? (
+          <Form
+            className="comment-composer"
+            form={form}
+            layout="vertical"
+            onFinish={(values) => commentMutation.mutate(values.content)}
+          >
+            <Form.Item name="content" rules={[{ required: true, message: '请输入评论内容' }]}>
+              <TextArea rows={4} placeholder="写下你的回应" maxLength={5000} showCount />
+            </Form.Item>
+            <Button type="primary" icon={<SendOutlined />} htmlType="submit" loading={commentMutation.isPending}>
+              发布评论
+            </Button>
+          </Form>
+        ) : (
+          <div className="comment-composer">
+            <p className="comment-login-copy">登录后参与回复。</p>
+            <Button type="primary" onClick={() => navigate('/login')}>
+              登录
+            </Button>
+          </div>
+        )}
+
+        <div className="comment-list">
+          {commentsQuery.isLoading ? (
+            <div className="center-panel">
+              <Spin />
+            </div>
+          ) : comments.length > 0 ? (
+            comments.map((comment) => (
+              <div className="comment-item" key={comment.id}>
+                <Avatar icon={<UserOutlined />} />
+                <div>
+                  <div className="comment-item__header">
+                    <span className="comment-item__author">{comment.authorName || '匿名用户'}</span>
+                    <span>{formatDate(comment.createdAt)}</span>
+                    <ForumStatPill icon={<LikeOutlined />} value={comment.likeCount || 0} label="点赞" />
+                  </div>
+                  <Paragraph className="comment-content">{comment.content}</Paragraph>
+                </div>
+              </div>
+            ))
+          ) : (
+            <Empty description="暂无评论" />
           )}
-          locale={{ emptyText: '暂无评论' }}
-        />
-      </Card>
+        </div>
+
+        <Link className="back-link" to="/posts">
+          返回帖子列表
+        </Link>
+      </section>
     </div>
   );
 }

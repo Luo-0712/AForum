@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { message } from 'antd';
 import { useAuthStore } from '../store/auth';
 
 const api = axios.create({
@@ -9,7 +10,6 @@ const api = axios.create({
   },
 });
 
-// 请求拦截器
 api.interceptors.request.use(
   (config) => {
     const token = useAuthStore.getState().token;
@@ -18,16 +18,11 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error),
 );
 
-// 响应拦截器
 api.interceptors.response.use(
-  (response) => {
-    return response.data;
-  },
+  (response) => response.data,
   (error) => {
     if (error.response) {
       const { status, data } = error.response;
@@ -37,7 +32,7 @@ api.interceptors.response.use(
           window.location.href = '/login';
           break;
         case 403:
-          console.error('无权限访问');
+          message.error(data?.message || '无权限访问');
           break;
         case 404:
           console.error('资源不存在');
@@ -50,7 +45,7 @@ api.interceptors.response.use(
       }
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;

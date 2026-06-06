@@ -43,6 +43,33 @@ CREATE TABLE IF NOT EXISTS user_role (
     UNIQUE KEY uk_user_role (user_id, role_id)
 );
 
+CREATE TABLE IF NOT EXISTS permission (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    name VARCHAR(50) NOT NULL,
+    code VARCHAR(100) NOT NULL,
+    resource_type VARCHAR(20),
+    url VARCHAR(200),
+    parent_id BIGINT DEFAULT 0,
+    sort INT DEFAULT 0,
+    status TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_permission_code (code)
+);
+
+CREATE TABLE IF NOT EXISTS role_permission (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    role_id BIGINT NOT NULL,
+    permission_id BIGINT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_role_permission (role_id, permission_id)
+);
+
 CREATE TABLE IF NOT EXISTS category (
     id BIGINT NOT NULL AUTO_INCREMENT,
     name VARCHAR(50) NOT NULL,

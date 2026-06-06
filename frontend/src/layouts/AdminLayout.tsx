@@ -1,16 +1,27 @@
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Layout, Menu } from 'antd';
-import {
-  DashboardOutlined,
-  UserOutlined,
-  FileTextOutlined,
-  SettingOutlined,
-} from '@ant-design/icons';
+import { DashboardOutlined, FileTextOutlined, SettingOutlined, UserOutlined } from '@ant-design/icons';
+import { useAuthStore } from '../store/auth';
 
 const { Header, Sider, Content } = Layout;
 
 export default function AdminLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const user = useAuthStore((state) => state.user);
+  const roles = user?.roles ?? [];
+  const permissions = user?.permissions ?? [];
+  const superAdmin = roles.includes('SUPER_ADMIN');
+  const can = (permission: string) => superAdmin || permissions.includes(permission);
+  const canAny = (items: string[]) => superAdmin || items.some((permission) => permissions.includes(permission));
+
+  const selectedKey = location.pathname.includes('/users')
+    ? 'users'
+    : location.pathname.includes('/posts')
+      ? 'posts'
+      : location.pathname.includes('/settings')
+        ? 'settings'
+        : 'dashboard';
 
   const menuItems = [
     {
@@ -18,40 +29,56 @@ export default function AdminLayout() {
       icon: <DashboardOutlined />,
       label: '仪表盘',
       onClick: () => navigate('/admin'),
+      visible: can('admin:dashboard') || roles.includes('ADMIN'),
     },
     {
       key: 'users',
       icon: <UserOutlined />,
       label: '用户管理',
       onClick: () => navigate('/admin/users'),
+      visible: canAny(['user:list', 'user:edit']),
     },
     {
       key: 'posts',
       icon: <FileTextOutlined />,
       label: '帖子管理',
       onClick: () => navigate('/admin/posts'),
+      visible: canAny(['post:list', 'post:review']),
     },
     {
       key: 'settings',
       icon: <SettingOutlined />,
       label: '系统设置',
       onClick: () => navigate('/admin/settings'),
+      visible: canAny(['role:manage', 'permission:manage']),
     },
-  ];
+  ]
+    .filter((item) => item.visible)
+    .map((item) => ({
+      key: item.key,
+      icon: item.icon,
+      label: item.label,
+      onClick: item.onClick,
+    }));
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Sider>
-        <div style={{ height: 32, margin: 16, background: 'rgba(255, 255, 255, 0.2)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <h2 style={{ color: 'white', margin: 0 }}>AForum Admin</h2>
+    <Layout className="admin-shell">
+      <Sider className="admin-sider" width={238}>
+        <div className="admin-brand">
+          <button className="brand-mark ghost-button" type="button" onClick={() => navigate('/')}>
+            AForum
+          </button>
         </div>
-        <Menu theme="dark" mode="inline" items={menuItems} />
+        <Menu mode="inline" selectedKeys={[selectedKey]} items={menuItems} />
       </Sider>
       <Layout>
-        <Header style={{ background: '#fff', padding: '0 24px' }}>
-          <h2>管理后台</h2>
+        <Header className="admin-header">
+          <div>
+            <span className="eyebrow">Admin</span>
+            <h1>管理后台</h1>
+          </div>
         </Header>
-        <Content style={{ margin: '24px 16px', padding: 24, background: '#fff', minHeight: 280 }}>
+        <Content className="admin-content">
           <Outlet />
         </Content>
       </Layout>

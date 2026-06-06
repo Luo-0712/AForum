@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
 import AdminLayout from '../layouts/AdminLayout';
 import Home from '../pages/Home';
@@ -9,28 +9,7 @@ import PostDetail from '../pages/PostDetail';
 import PostEditor from '../pages/PostEditor';
 import UserProfile from '../pages/UserProfile';
 import AdminDashboard from '../pages/admin/Dashboard';
-import { useAuthStore } from '../store/auth';
-
-// 路由守卫
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const token = useAuthStore((state) => state.token);
-  if (!token) {
-    return <Navigate to="/login" replace />;
-  }
-  return <>{children}</>;
-}
-
-function AdminRoute({ children }: { children: React.ReactNode }) {
-  const token = useAuthStore((state) => state.token);
-  const user = useAuthStore((state) => state.user);
-  if (!token) {
-    return <Navigate to="/login" replace />;
-  }
-  if (!user || user.userType < 2) {
-    return <Navigate to="/" replace />;
-  }
-  return <>{children}</>;
-}
+import { AdminRoute, ProtectedRoute } from './guards';
 
 export const router = createBrowserRouter([
   {

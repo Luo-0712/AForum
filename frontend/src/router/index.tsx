@@ -9,6 +9,7 @@ import PostDetail from '../pages/PostDetail';
 import PostEditor from '../pages/PostEditor';
 import UserProfile from '../pages/UserProfile';
 import AdminDashboard from '../pages/admin/Dashboard';
+import AccessControl from '../pages/admin/AccessControl';
 import { AdminRoute, ProtectedRoute } from './guards';
 
 export const router = createBrowserRouter([
@@ -65,6 +66,10 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <AdminDashboard />,
+      },
+      {
+        path: 'access',
+        element: <AccessControl />,
       },
     ],
   },

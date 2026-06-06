@@ -33,12 +33,12 @@ public class PostController {
 
     @GetMapping
     public Result<PageResult<PostSummaryVO>> listPosts(PostQueryDTO query) {
-        return Result.success(postService.listPosts(query));
+        return Result.success(postService.listPosts(SecurityUtils.getCurrentUserId(), query));
     }
 
     @GetMapping("/{id}")
     public Result<PostDetailVO> getPostDetail(@PathVariable Long id) {
-        return Result.success(postService.getPostDetail(id, true));
+        return Result.success(postService.getPostDetail(SecurityUtils.getCurrentUserId(), id, true));
     }
 
     @PostMapping
@@ -59,7 +59,7 @@ public class PostController {
 
     @GetMapping("/{postId}/comments")
     public Result<List<CommentVO>> listComments(@PathVariable Long postId) {
-        return Result.success(postService.listComments(postId));
+        return Result.success(postService.listComments(SecurityUtils.getCurrentUserId(), postId));
     }
 
     @PostMapping("/{postId}/comments")

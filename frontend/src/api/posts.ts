@@ -32,6 +32,8 @@ export interface PostSummary {
   likeCount: number;
   commentCount: number;
   favoriteCount: number;
+  liked: boolean;
+  favorited: boolean;
   createdAt: string;
   lastCommentAt?: string;
 }
@@ -53,8 +55,14 @@ export interface CommentItem {
   parentId: Numeric;
   replyUserId?: Numeric;
   likeCount: number;
+  liked: boolean;
   status: number;
   createdAt: string;
+}
+
+export interface InteractionState {
+  active: boolean;
+  count: number;
 }
 
 export interface PostPayload {
@@ -70,7 +78,7 @@ export interface CommentPayload {
   replyUserId?: Numeric;
 }
 
-export function listPosts(params: { pageNum?: number; pageSize?: number; keyword?: string }) {
+export function listPosts(params: { pageNum?: number; pageSize?: number; keyword?: string; userId?: Numeric }) {
   return api.get<unknown, ApiResponse<PageResult<PostSummary>>>('/posts', { params });
 }
 
@@ -96,4 +104,28 @@ export function listComments(postId: number | string) {
 
 export function createComment(postId: number | string, payload: CommentPayload) {
   return api.post<unknown, ApiResponse<CommentItem>>(`/posts/${postId}/comments`, payload);
+}
+
+export function likePost(postId: number | string) {
+  return api.post<unknown, ApiResponse<InteractionState>>(`/posts/${postId}/like`);
+}
+
+export function unlikePost(postId: number | string) {
+  return api.delete<unknown, ApiResponse<InteractionState>>(`/posts/${postId}/like`);
+}
+
+export function favoritePost(postId: number | string) {
+  return api.post<unknown, ApiResponse<InteractionState>>(`/posts/${postId}/favorite`);
+}
+
+export function unfavoritePost(postId: number | string) {
+  return api.delete<unknown, ApiResponse<InteractionState>>(`/posts/${postId}/favorite`);
+}
+
+export function likeComment(commentId: number | string) {
+  return api.post<unknown, ApiResponse<InteractionState>>(`/comments/${commentId}/like`);
+}
+
+export function unlikeComment(commentId: number | string) {
+  return api.delete<unknown, ApiResponse<InteractionState>>(`/comments/${commentId}/like`);
 }

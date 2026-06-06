@@ -6,6 +6,10 @@ import ForumStatPill from './ForumStatPill';
 interface PostPreviewCardProps {
   post: PostSummary;
   compact?: boolean;
+  likePending?: boolean;
+  favoritePending?: boolean;
+  onLikeToggle?: (post: PostSummary) => void;
+  onFavoriteToggle?: (post: PostSummary) => void;
 }
 
 function formatDate(value?: string) {
@@ -26,7 +30,14 @@ function formatDate(value?: string) {
   }).format(date);
 }
 
-export default function PostPreviewCard({ post, compact = false }: PostPreviewCardProps) {
+export default function PostPreviewCard({
+  post,
+  compact = false,
+  likePending = false,
+  favoritePending = false,
+  onLikeToggle,
+  onFavoriteToggle,
+}: PostPreviewCardProps) {
   const href = `/posts/${post.id}`;
   const hasCover = Boolean(post.coverUrl);
 
@@ -48,9 +59,23 @@ export default function PostPreviewCard({ post, compact = false }: PostPreviewCa
 
         <div className="post-preview-card__footer">
           <ForumStatPill icon={<EyeOutlined />} value={post.viewCount || 0} label="浏览" />
-          <ForumStatPill icon={<LikeOutlined />} value={post.likeCount || 0} label="点赞" />
+          <ForumStatPill
+            icon={<LikeOutlined />}
+            value={post.likeCount || 0}
+            label="点赞"
+            active={post.liked}
+            loading={likePending}
+            onClick={onLikeToggle ? () => onLikeToggle(post) : undefined}
+          />
           <ForumStatPill icon={<MessageOutlined />} value={post.commentCount || 0} label="评论" />
-          <ForumStatPill icon={<StarOutlined />} value={post.favoriteCount || 0} label="收藏" />
+          <ForumStatPill
+            icon={<StarOutlined />}
+            value={post.favoriteCount || 0}
+            label="收藏"
+            active={post.favorited}
+            loading={favoritePending}
+            onClick={onFavoriteToggle ? () => onFavoriteToggle(post) : undefined}
+          />
         </div>
       </div>
 

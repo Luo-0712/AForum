@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.aforum.common.constant.PostStatus;
 import com.example.aforum.common.exception.BusinessException;
+import com.example.aforum.common.request.PageRequest;
 import com.example.aforum.common.result.ErrorCode;
 import com.example.aforum.common.result.PageResult;
 import com.example.aforum.content.dto.CreateCommentDTO;
@@ -26,6 +27,9 @@ import com.example.aforum.content.service.PostService;
 import com.example.aforum.content.vo.CommentVO;
 import com.example.aforum.content.vo.PostDetailVO;
 import com.example.aforum.content.vo.PostSummaryVO;
+import com.example.aforum.interaction.entity.PostFavorite;
+import com.example.aforum.interaction.mapper.PostFavoriteMapper;
+import com.example.aforum.interaction.service.InteractionService;
 import com.example.aforum.user.entity.User;
 import com.example.aforum.user.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
@@ -50,9 +54,11 @@ public class PostServiceImpl implements PostService {
     private final BoardMapper boardMapper;
     private final ContentReviewMapper contentReviewMapper;
     private final ContentAuditService contentAuditService;
+    private final PostFavoriteMapper postFavoriteMapper;
+    private final InteractionService interactionService;
 
     @Override
-    public PageResult<PostSummaryVO> listPosts(PostQueryDTO query) {
+    public PageResult<PostSummaryVO> listPosts(Long currentUserId, PostQueryDTO query) {
         long pageNum = sanitizePageNum(query.getPageNum());
         long pageSize = sanitizePageSize(query.getPageSize());
         LambdaQueryWrapper<Post> wrapper = new LambdaQueryWrapper<Post>()
@@ -64,22 +70,25 @@ public class PostServiceImpl implements PostService {
                     .or()
                     .like(Post::getContent, query.getKeyword()));
         }
+        if (query.getUserId() != null) {
+            wrapper.eq(Post::getUserId, query.getUserId());
+        }
         Page<Post> page = postMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
         List<PostSummaryVO> records = page.getRecords().stream()
-                .map(this::toSummaryVO)
+                .map(post -> toSummaryVO(post, currentUserId))
                 .toList();
         return new PageResult<>(records, page.getTotal(), page.getSize(), page.getCurrent());
     }
 
     @Override
     @Transactional
-    public PostDetailVO getPostDetail(Long id, boolean increaseView) {
+    public PostDetailVO getPostDetail(Long currentUserId, Long id, boolean increaseView) {
         Post post = getVisiblePost(id);
         if (increaseView && PostStatus.PUBLISHED.getCode().equals(post.getStatus())) {
             post.setViewCount(defaultInt(post.getViewCount()) + 1);
             postMapper.updateById(post);
         }
-        return toDetailVO(post, latestReview(post.getId()), suggestedTags(post.getTitle(), post.getContent()));
+        return toDetailVO(post, latestReview(post.getId()), suggestedTags(post.getTitle(), post.getContent()), currentUserId);
     }
 
     @Override
@@ -108,7 +117,7 @@ public class PostServiceImpl implements PostService {
         if (decision.approved()) {
             increaseBoardPostCount(post.getBoardId());
         }
-        return toDetailVO(post, latestReview(post.getId()), decision.suggestedTags());
+        return toDetailVO(post, latestReview(post.getId()), decision.suggestedTags(), userId);
     }
 
     @Override
@@ -137,7 +146,7 @@ public class PostServiceImpl implements PostService {
         if (decision.approved() && (oldBoardId == null || !oldBoardId.equals(post.getBoardId()))) {
             increaseBoardPostCount(post.getBoardId());
         }
-        return toDetailVO(post, latestReview(post.getId()), decision.suggestedTags());
+        return toDetailVO(post, latestReview(post.getId()), decision.suggestedTags(), userId);
     }
 
     @Override
@@ -155,13 +164,13 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
-    public List<CommentVO> listComments(Long postId) {
+    public List<CommentVO> listComments(Long currentUserId, Long postId) {
         Post post = getVisiblePost(postId);
         List<Comment> comments = commentMapper.selectList(new LambdaQueryWrapper<Comment>()
                 .eq(Comment::getPostId, post.getId())
                 .eq(Comment::getStatus, 0)
                 .orderByAsc(Comment::getCreatedAt));
-        return comments.stream().map(this::toCommentVO).toList();
+        return comments.stream().map(comment -> toCommentVO(comment, currentUserId)).toList();
     }
 
     @Override
@@ -188,7 +197,24 @@ public class PostServiceImpl implements PostService {
             comment.setStatus(1);
             commentMapper.updateById(comment);
         }
-        return toCommentVO(comment);
+        return toCommentVO(comment, userId);
+    }
+
+    @Override
+    public PageResult<PostSummaryVO> listFavoritePosts(Long currentUserId, Long userId, PageRequest request) {
+        requireUser(userId);
+        long pageNum = sanitizePageNum(request.getPageNum());
+        long pageSize = sanitizePageSize(request.getPageSize());
+        Page<PostFavorite> page = postFavoriteMapper.selectPage(new Page<>(pageNum, pageSize),
+                new LambdaQueryWrapper<PostFavorite>()
+                        .eq(PostFavorite::getUserId, userId)
+                        .orderByDesc(PostFavorite::getCreatedAt));
+        List<PostSummaryVO> records = page.getRecords().stream()
+                .map(favorite -> postMapper.selectById(favorite.getPostId()))
+                .filter(post -> post != null && PostStatus.PUBLISHED.getCode().equals(post.getStatus()))
+                .map(post -> toSummaryVO(post, currentUserId))
+                .toList();
+        return new PageResult<>(records, page.getTotal(), page.getSize(), page.getCurrent());
     }
 
     private Post getVisiblePost(Long id) {
@@ -255,7 +281,7 @@ public class PostServiceImpl implements PostService {
                 .last("LIMIT 1"));
     }
 
-    private PostSummaryVO toSummaryVO(Post post) {
+    private PostSummaryVO toSummaryVO(Post post, Long currentUserId) {
         ContentReview review = latestReview(post.getId());
         return PostSummaryVO.builder()
                 .id(post.getId())
@@ -273,12 +299,14 @@ public class PostServiceImpl implements PostService {
                 .likeCount(defaultInt(post.getLikeCount()))
                 .commentCount(defaultInt(post.getCommentCount()))
                 .favoriteCount(defaultInt(post.getFavoriteCount()))
+                .liked(interactionService.isPostLiked(currentUserId, post.getId()))
+                .favorited(interactionService.isPostFavorited(currentUserId, post.getId()))
                 .createdAt(post.getCreatedAt())
                 .lastCommentAt(post.getLastCommentAt())
                 .build();
     }
 
-    private PostDetailVO toDetailVO(Post post, ContentReview review, List<String> suggestedTags) {
+    private PostDetailVO toDetailVO(Post post, ContentReview review, List<String> suggestedTags, Long currentUserId) {
         return PostDetailVO.builder()
                 .id(post.getId())
                 .title(post.getTitle())
@@ -297,6 +325,8 @@ public class PostServiceImpl implements PostService {
                 .likeCount(defaultInt(post.getLikeCount()))
                 .commentCount(defaultInt(post.getCommentCount()))
                 .favoriteCount(defaultInt(post.getFavoriteCount()))
+                .liked(interactionService.isPostLiked(currentUserId, post.getId()))
+                .favorited(interactionService.isPostFavorited(currentUserId, post.getId()))
                 .top(Boolean.TRUE.equals(post.getTop()))
                 .essence(Boolean.TRUE.equals(post.getEssence()))
                 .createdAt(post.getCreatedAt())
@@ -304,7 +334,7 @@ public class PostServiceImpl implements PostService {
                 .build();
     }
 
-    private CommentVO toCommentVO(Comment comment) {
+    private CommentVO toCommentVO(Comment comment, Long currentUserId) {
         return CommentVO.builder()
                 .id(comment.getId())
                 .content(comment.getContent())
@@ -314,6 +344,7 @@ public class PostServiceImpl implements PostService {
                 .parentId(comment.getParentId())
                 .replyUserId(comment.getReplyUserId())
                 .likeCount(defaultInt(comment.getLikeCount()))
+                .liked(interactionService.isCommentLiked(currentUserId, comment.getId()))
                 .status(comment.getStatus())
                 .createdAt(comment.getCreatedAt())
                 .build();

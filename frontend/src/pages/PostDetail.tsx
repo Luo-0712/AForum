@@ -1,8 +1,21 @@
+import { Children } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Avatar, Button, Empty, Form, Input, Spin, Typography, message } from 'antd';
-import { EyeOutlined, LikeOutlined, MessageOutlined, SendOutlined, UserOutlined } from '@ant-design/icons';
-import { createComment, getPost, listComments } from '../api/posts';
+import { EyeOutlined, LikeOutlined, MessageOutlined, SendOutlined, StarOutlined, UserOutlined } from '@ant-design/icons';
+import {
+  createComment,
+  favoritePost,
+  getPost,
+  likeComment,
+  likePost,
+  listComments,
+  unfavoritePost,
+  unlikeComment,
+  unlikePost,
+  type CommentItem,
+} from '../api/posts';
+import { followUser, getUser, unfollowUser } from '../api/users';
 import ForumStatPill from '../components/ForumStatPill';
 import { useAuthStore } from '../store/auth';
 
@@ -12,6 +25,8 @@ const { TextArea } = Input;
 interface CommentForm {
   content: string;
 }
+
+type PostAction = 'like' | 'favorite';
 
 function formatDate(value?: string) {
   if (!value) {
@@ -36,6 +51,7 @@ export default function PostDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const token = useAuthStore((state) => state.token);
+  const currentUser = useAuthStore((state) => state.user);
   const queryClient = useQueryClient();
   const [form] = Form.useForm<CommentForm>();
   const postId = id || '';
@@ -50,6 +66,64 @@ export default function PostDetail() {
     queryKey: ['comments', postId],
     queryFn: () => listComments(postId),
     enabled: Boolean(postId),
+  });
+
+  const post = postQuery.data?.data;
+
+  const authorQuery = useQuery({
+    queryKey: ['user', post?.userId],
+    queryFn: () => getUser(post?.userId || ''),
+    enabled: Boolean(token && post?.userId),
+  });
+
+  const requireLogin = () => {
+    if (token) {
+      return true;
+    }
+    message.warning('登录后参与互动');
+    navigate('/login');
+    return false;
+  };
+
+  const postInteractionMutation = useMutation({
+    mutationFn: (kind: PostAction) => {
+      const currentPost = postQuery.data?.data;
+      if (!currentPost) {
+        throw new Error('Post is not loaded');
+      }
+      if (kind === 'like') {
+        return currentPost.liked ? unlikePost(currentPost.id) : likePost(currentPost.id);
+      }
+      return currentPost.favorited ? unfavoritePost(currentPost.id) : favoritePost(currentPost.id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['post', postId] });
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+    },
+    onError: () => message.error('互动失败，请稍后再试'),
+  });
+
+  const commentLikeMutation = useMutation({
+    mutationFn: (comment: CommentItem) => (comment.liked ? unlikeComment(comment.id) : likeComment(comment.id)),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['comments', postId] }),
+    onError: () => message.error('评论点赞失败'),
+  });
+
+  const followMutation = useMutation({
+    mutationFn: () => {
+      const author = authorQuery.data?.data;
+      const authorId = author?.id || post?.userId;
+      if (!authorId) {
+        throw new Error('Author is not loaded');
+      }
+      return author?.followedByCurrentUser ? unfollowUser(authorId) : followUser(authorId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user', post?.userId] });
+      queryClient.invalidateQueries({ queryKey: ['profile-following'] });
+      queryClient.invalidateQueries({ queryKey: ['profile-followers'] });
+    },
+    onError: () => message.error('关注失败，请稍后再试'),
   });
 
   const commentMutation = useMutation({
@@ -67,6 +141,27 @@ export default function PostDetail() {
     onError: () => message.error('评论失败'),
   });
 
+  const handlePostInteraction = (kind: PostAction) => {
+    if (!requireLogin()) {
+      return;
+    }
+    postInteractionMutation.mutate(kind);
+  };
+
+  const handleCommentLike = (comment: CommentItem) => {
+    if (!requireLogin()) {
+      return;
+    }
+    commentLikeMutation.mutate(comment);
+  };
+
+  const handleFollow = () => {
+    if (!requireLogin()) {
+      return;
+    }
+    followMutation.mutate();
+  };
+
   if (postQuery.isLoading) {
     return (
       <div className="center-panel">
@@ -74,8 +169,6 @@ export default function PostDetail() {
       </div>
     );
   }
-
-  const post = postQuery.data?.data;
 
   if (!post) {
     return (
@@ -88,6 +181,8 @@ export default function PostDetail() {
   }
 
   const comments = commentsQuery.data?.data || [];
+  const author = authorQuery.data?.data;
+  const canFollowAuthor = Boolean(token && currentUser && String(currentUser.id) !== String(post.userId));
 
   return (
     <div className="forum-page detail-page">
@@ -95,11 +190,13 @@ export default function PostDetail() {
         <div className="post-detail__meta">
           {post.boardName && <span className="forum-chip forum-chip--primary">{post.boardName}</span>}
           {post.categoryName && <span className="forum-chip">{post.categoryName}</span>}
-          {post.suggestedTags?.map((tag) => (
-            <span className="forum-chip forum-chip--warning" key={tag}>
-              {tag}
-            </span>
-          ))}
+          {Children.toArray(
+            (post.suggestedTags || []).map((tag) => (
+              <span className="forum-chip forum-chip--warning">
+                {tag}
+              </span>
+            )),
+          )}
           <span>{formatDate(post.createdAt)}</span>
         </div>
 
@@ -108,8 +205,20 @@ export default function PostDetail() {
         </Title>
 
         <div className="post-detail__author">
-          <Avatar size={34} icon={<UserOutlined />} />
-          <span>作者：{post.authorName || '匿名用户'}</span>
+          <Link className="post-detail__author-main" to={`/user/${post.userId}`}>
+            <Avatar size={34} src={author?.avatar || undefined} icon={<UserOutlined />} />
+            <span>作者：{post.authorName || '匿名用户'}</span>
+          </Link>
+          {canFollowAuthor && (
+            <Button
+              size="small"
+              type={author?.followedByCurrentUser ? 'default' : 'primary'}
+              loading={followMutation.isPending || authorQuery.isLoading}
+              onClick={handleFollow}
+            >
+              {author?.followedByCurrentUser ? '已关注' : '关注作者'}
+            </Button>
+          )}
         </div>
 
         {post.coverUrl && (
@@ -124,8 +233,23 @@ export default function PostDetail() {
 
         <div className="post-preview-card__footer">
           <ForumStatPill icon={<EyeOutlined />} value={post.viewCount || 0} label="浏览" />
-          <ForumStatPill icon={<LikeOutlined />} value={post.likeCount || 0} label="点赞" />
+          <ForumStatPill
+            icon={<LikeOutlined />}
+            value={post.likeCount || 0}
+            label="点赞"
+            active={post.liked}
+            loading={postInteractionMutation.isPending && postInteractionMutation.variables === 'like'}
+            onClick={() => handlePostInteraction('like')}
+          />
           <ForumStatPill icon={<MessageOutlined />} value={post.commentCount || 0} label="评论" />
+          <ForumStatPill
+            icon={<StarOutlined />}
+            value={post.favoriteCount || 0}
+            label="收藏"
+            active={post.favorited}
+            loading={postInteractionMutation.isPending && postInteractionMutation.variables === 'favorite'}
+            onClick={() => handlePostInteraction('favorite')}
+          />
         </div>
       </article>
 
@@ -167,19 +291,31 @@ export default function PostDetail() {
               <Spin />
             </div>
           ) : comments.length > 0 ? (
-            comments.map((comment) => (
-              <div className="comment-item" key={comment.id}>
-                <Avatar icon={<UserOutlined />} />
-                <div>
-                  <div className="comment-item__header">
-                    <span className="comment-item__author">{comment.authorName || '匿名用户'}</span>
-                    <span>{formatDate(comment.createdAt)}</span>
-                    <ForumStatPill icon={<LikeOutlined />} value={comment.likeCount || 0} label="点赞" />
+            Children.toArray(
+              comments.map((comment) => (
+                <div className="comment-item">
+                  <Avatar icon={<UserOutlined />} />
+                  <div>
+                    <div className="comment-item__header">
+                      <span className="comment-item__author">{comment.authorName || '匿名用户'}</span>
+                      <span>{formatDate(comment.createdAt)}</span>
+                      <ForumStatPill
+                        icon={<LikeOutlined />}
+                        value={comment.likeCount || 0}
+                        label="点赞"
+                        active={comment.liked}
+                        loading={
+                          commentLikeMutation.isPending &&
+                          String(commentLikeMutation.variables?.id) === String(comment.id)
+                        }
+                        onClick={() => handleCommentLike(comment)}
+                      />
+                    </div>
+                    <Paragraph className="comment-content">{comment.content}</Paragraph>
                   </div>
-                  <Paragraph className="comment-content">{comment.content}</Paragraph>
                 </div>
-              </div>
-            ))
+              )),
+            )
           ) : (
             <Empty description="暂无评论" />
           )}

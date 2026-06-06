@@ -18,6 +18,11 @@ public class UserInfoVO {
     private String bio;
     private Integer userType;
     private Integer status;
+    private Integer postCount;
+    private Integer favoriteCount;
+    private Integer followingCount;
+    private Integer followerCount;
+    private Boolean followedByCurrentUser;
     private List<String> roles;
     private List<String> permissions;
     private LocalDateTime createdAt;

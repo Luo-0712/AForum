@@ -1,6 +1,7 @@
 package com.example.aforum.content.service;
 
 import com.example.aforum.common.result.PageResult;
+import com.example.aforum.common.request.PageRequest;
 import com.example.aforum.content.dto.CreateCommentDTO;
 import com.example.aforum.content.dto.CreatePostDTO;
 import com.example.aforum.content.dto.PostQueryDTO;
@@ -13,9 +14,9 @@ import java.util.List;
 
 public interface PostService {
 
-    PageResult<PostSummaryVO> listPosts(PostQueryDTO query);
+    PageResult<PostSummaryVO> listPosts(Long currentUserId, PostQueryDTO query);
 
-    PostDetailVO getPostDetail(Long id, boolean increaseView);
+    PostDetailVO getPostDetail(Long currentUserId, Long id, boolean increaseView);
 
     PostDetailVO createPost(Long userId, CreatePostDTO dto);
 
@@ -23,7 +24,9 @@ public interface PostService {
 
     void deletePost(Long userId, Long id);
 
-    List<CommentVO> listComments(Long postId);
+    List<CommentVO> listComments(Long currentUserId, Long postId);
 
     CommentVO createComment(Long userId, Long postId, CreateCommentDTO dto);
+
+    PageResult<PostSummaryVO> listFavoritePosts(Long currentUserId, Long userId, PageRequest request);
 }

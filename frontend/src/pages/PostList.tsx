@@ -1,14 +1,24 @@
-import { useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { Empty, Input, Pagination, Spin } from 'antd';
+import { Children } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Empty, Input, Pagination, Spin, message } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
-import { listPosts } from '../api/posts';
+import { favoritePost, likePost, listPosts, unfavoritePost, unlikePost, type PostSummary } from '../api/posts';
 import PostPreviewCard from '../components/PostPreviewCard';
+import { useAuthStore } from '../store/auth';
 
 const { Search } = Input;
 
+type PostInteraction = {
+  post: PostSummary;
+  kind: 'like' | 'favorite';
+};
+
 export default function PostList() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const token = useAuthStore((state) => state.token);
+  const queryClient = useQueryClient();
   const keyword = searchParams.get('keyword') || '';
   const pageParam = Number(searchParams.get('page') || 1);
   const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
@@ -18,11 +28,28 @@ export default function PostList() {
     queryFn: () => listPosts({ pageNum: page, pageSize: 10, keyword }),
   });
 
+  const interactionMutation = useMutation({
+    mutationFn: ({ post, kind }: PostInteraction) => {
+      if (kind === 'like') {
+        return post.liked ? unlikePost(post.id) : likePost(post.id);
+      }
+      return post.favorited ? unfavoritePost(post.id) : favoritePost(post.id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+    },
+    onError: () => message.error('互动失败，请稍后再试'),
+  });
+
   const pageData = data?.data;
   const total = Number(pageData?.total || 0);
   const current = Number(pageData?.current || page);
   const size = Number(pageData?.size || 10);
   const posts = pageData?.records || [];
+  const pendingPost = interactionMutation.variables;
+  const pendingKey = interactionMutation.isPending && pendingPost
+    ? `${pendingPost.kind}:${pendingPost.post.id}`
+    : '';
 
   const handleSearch = (value: string) => {
     const nextKeyword = value.trim();
@@ -40,6 +67,15 @@ export default function PostList() {
     setSearchParams(nextParams);
   };
 
+  const handleInteraction = (post: PostSummary, kind: PostInteraction['kind']) => {
+    if (!token) {
+      message.warning('登录后参与互动');
+      navigate('/login');
+      return;
+    }
+    interactionMutation.mutate({ post, kind });
+  };
+
   return (
     <div className="forum-page">
       <div className="page-heading">
@@ -50,7 +86,6 @@ export default function PostList() {
         </div>
         <div className="page-toolbar">
           <Search
-            key={keyword}
             allowClear
             enterButton={<SearchOutlined />}
             placeholder="搜索标题或正文"
@@ -67,9 +102,17 @@ export default function PostList() {
       ) : posts.length > 0 ? (
         <>
           <div className="post-list">
-            {posts.map((post) => (
-              <PostPreviewCard key={post.id} post={post} />
-            ))}
+            {Children.toArray(
+              posts.map((post) => (
+                <PostPreviewCard
+                  post={post}
+                  likePending={pendingKey === `like:${post.id}`}
+                  favoritePending={pendingKey === `favorite:${post.id}`}
+                  onLikeToggle={(item) => handleInteraction(item, 'like')}
+                  onFavoriteToggle={(item) => handleInteraction(item, 'favorite')}
+                />
+              )),
+            )}
           </div>
           {total > 0 && (
             <Pagination

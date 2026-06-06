@@ -27,6 +27,8 @@ public class PostDetailVO {
     private Integer likeCount;
     private Integer commentCount;
     private Integer favoriteCount;
+    private Boolean liked;
+    private Boolean favorited;
     private Boolean top;
     private Boolean essence;
     private LocalDateTime createdAt;

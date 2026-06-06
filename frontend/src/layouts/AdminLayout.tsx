@@ -1,6 +1,6 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Layout, Menu } from 'antd';
-import { DashboardOutlined, FileTextOutlined, SettingOutlined, UserOutlined } from '@ant-design/icons';
+import { DashboardOutlined, FileTextOutlined, SafetyCertificateOutlined, UserOutlined } from '@ant-design/icons';
 import { useAuthStore } from '../store/auth';
 
 const { Header, Sider, Content } = Layout;
@@ -19,8 +19,8 @@ export default function AdminLayout() {
     ? 'users'
     : location.pathname.includes('/posts')
       ? 'posts'
-      : location.pathname.includes('/settings')
-        ? 'settings'
+      : location.pathname.includes('/access')
+        ? 'access'
         : 'dashboard';
 
   const menuItems = [
@@ -46,10 +46,10 @@ export default function AdminLayout() {
       visible: canAny(['post:list', 'post:review']),
     },
     {
-      key: 'settings',
-      icon: <SettingOutlined />,
-      label: '系统设置',
-      onClick: () => navigate('/admin/settings'),
+      key: 'access',
+      icon: <SafetyCertificateOutlined />,
+      label: '权限管理',
+      onClick: () => navigate('/admin/access'),
       visible: canAny(['role:manage', 'permission:manage']),
     },
   ]

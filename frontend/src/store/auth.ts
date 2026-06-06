@@ -7,6 +7,11 @@ export interface UserInfo {
   nickname: string;
   avatar: string;
   userType: number;
+  postCount?: number;
+  favoriteCount?: number;
+  followingCount?: number;
+  followerCount?: number;
+  followedByCurrentUser?: boolean;
   roles?: string[];
   permissions?: string[];
 }

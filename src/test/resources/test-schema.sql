@@ -140,6 +140,50 @@ CREATE TABLE IF NOT EXISTS comment (
     PRIMARY KEY (id)
 );
 
+CREATE TABLE IF NOT EXISTS post_like (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    post_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_post_like_user (post_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS post_favorite (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    post_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_post_favorite_user (post_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS comment_like (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    comment_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_comment_like_user (comment_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS user_follow (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    follow_user_id BIGINT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_user_follow (user_id, follow_user_id)
+);
+
 CREATE TABLE IF NOT EXISTS content_review (
     id BIGINT NOT NULL AUTO_INCREMENT,
     content_type VARCHAR(20) NOT NULL,

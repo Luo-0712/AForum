@@ -10,4 +10,6 @@ public class PostQueryDTO {
     private Long pageSize = 10L;
 
     private String keyword;
+
+    private Long userId;
 }

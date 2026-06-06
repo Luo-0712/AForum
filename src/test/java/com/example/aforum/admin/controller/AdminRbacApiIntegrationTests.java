@@ -165,6 +165,86 @@ class AdminRbacApiIntegrationTests {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void permissionManagerCanReadPermissionsButCannotManageRoles() throws Exception {
+        TestAccount permissionManager = registerAccount("rbac-perm");
+        Role role = createRoleWithPermission("PERM_ONLY_" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase(),
+                "permission:manage");
+        assignRole(permissionManager.userId(), role.getCode());
+
+        JsonNode permissions = readJson(mockMvc.perform(get("/api/admin/permissions")
+                        .header("Authorization", "Bearer " + permissionManager.token()))
+                .andExpect(status().isOk())
+                .andReturn());
+        assertThat(permissions.path("code").asInt()).isEqualTo(200);
+        assertThat(strings(permissions.path("data").findValues("code"))).contains("permission:manage");
+
+        mockMvc.perform(get("/api/admin/roles")
+                        .header("Authorization", "Bearer " + permissionManager.token()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void roleManagerCannotModifySuperAdminRoleWithoutSuperAdminRole() throws Exception {
+        TestAccount roleManager = registerAccount("rbac-role-manager");
+        Role role = createRoleWithPermission("ROLE_MGR_" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase(),
+                "role:manage");
+        assignRole(roleManager.userId(), role.getCode());
+
+        JsonNode blocked = readJson(mockMvc.perform(put("/api/admin/roles/{id}", roleId("SUPER_ADMIN"))
+                        .header("Authorization", "Bearer " + roleManager.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "name", "超级管理员",
+                                "code", "SUPER_ADMIN",
+                                "description", "attempted update"))))
+                .andExpect(status().isOk())
+                .andReturn());
+
+        assertThat(blocked.path("code").asInt()).isEqualTo(403);
+    }
+
+    @Test
+    void superAdminCanToggleCustomRoleButCannotDisableSuperAdminRole() throws Exception {
+        TestAccount superAdmin = registerAccount("rbac-super-status");
+        assignRole(superAdmin.userId(), "SUPER_ADMIN");
+        Role role = createRoleWithPermission("TOGGLE_" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase(),
+                "post:review");
+
+        JsonNode disabled = readJson(mockMvc.perform(put("/api/admin/roles/{id}/status", role.getId())
+                        .header("Authorization", "Bearer " + superAdmin.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of("status", 1))))
+                .andExpect(status().isOk())
+                .andReturn());
+        assertThat(disabled.path("code").asInt()).isEqualTo(200);
+        assertThat(disabled.path("data").path("status").asInt()).isEqualTo(1);
+
+        JsonNode blocked = readJson(mockMvc.perform(put("/api/admin/roles/{id}/status", roleId("SUPER_ADMIN"))
+                        .header("Authorization", "Bearer " + superAdmin.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of("status", 1))))
+                .andExpect(status().isOk())
+                .andReturn());
+        assertThat(blocked.path("code").asInt()).isEqualTo(400);
+    }
+
+    @Test
+    void lastActiveSuperAdminCannotBeDemoted() throws Exception {
+        TestAccount superAdmin = registerAccount("rbac-last-super");
+        removeRoleAssignments("SUPER_ADMIN");
+        assignRole(superAdmin.userId(), "SUPER_ADMIN");
+
+        JsonNode blocked = readJson(mockMvc.perform(put("/api/admin/users/{id}/roles", superAdmin.userId())
+                        .header("Authorization", "Bearer " + superAdmin.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of("roleIds", new Long[]{roleId("USER")}))))
+                .andExpect(status().isOk())
+                .andReturn());
+
+        assertThat(blocked.path("code").asInt()).isEqualTo(409);
+    }
+
     private TestAccount registerAccount(String prefix) throws Exception {
         String suffix = UUID.randomUUID().toString().replace("-", "");
         String username = prefix + "-" + suffix.substring(0, 10);
@@ -181,6 +261,10 @@ class AdminRbacApiIntegrationTests {
         User user = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getUsername, username));
         assertThat(user).isNotNull();
         return new TestAccount(response.path("data").path("accessToken").asText(), user.getId(), username);
+    }
+
+    private void removeRoleAssignments(String roleCode) {
+        userRoleMapper.delete(new LambdaQueryWrapper<UserRole>().eq(UserRole::getRoleId, roleId(roleCode)));
     }
 
     private void assignRole(Long userId, String roleCode) {

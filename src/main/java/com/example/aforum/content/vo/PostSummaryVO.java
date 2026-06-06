@@ -24,6 +24,8 @@ public class PostSummaryVO {
     private Integer likeCount;
     private Integer commentCount;
     private Integer favoriteCount;
+    private Boolean liked;
+    private Boolean favorited;
     private LocalDateTime createdAt;
     private LocalDateTime lastCommentAt;
 }

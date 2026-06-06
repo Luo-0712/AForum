@@ -1,0 +1,131 @@
+CREATE TABLE IF NOT EXISTS user (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    username VARCHAR(50) NOT NULL,
+    password VARCHAR(100) NOT NULL,
+    email VARCHAR(100),
+    phone VARCHAR(20),
+    nickname VARCHAR(50),
+    avatar VARCHAR(255),
+    bio VARCHAR(500),
+    user_type TINYINT NOT NULL DEFAULT 0,
+    status TINYINT NOT NULL DEFAULT 0,
+    last_login_at DATETIME,
+    last_login_ip VARCHAR(50),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_username (username),
+    UNIQUE KEY uk_email (email)
+);
+
+CREATE TABLE IF NOT EXISTS role (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    name VARCHAR(50) NOT NULL,
+    code VARCHAR(50) NOT NULL,
+    description VARCHAR(200),
+    status TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_role_code (code)
+);
+
+CREATE TABLE IF NOT EXISTS user_role (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    role_id BIGINT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_user_role (user_id, role_id)
+);
+
+CREATE TABLE IF NOT EXISTS category (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    name VARCHAR(50) NOT NULL,
+    code VARCHAR(50) NOT NULL,
+    description VARCHAR(200),
+    icon VARCHAR(100),
+    parent_id BIGINT DEFAULT 0,
+    sort INT DEFAULT 0,
+    status TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_category_code (code)
+);
+
+CREATE TABLE IF NOT EXISTS board (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    name VARCHAR(50) NOT NULL,
+    code VARCHAR(50) NOT NULL,
+    description VARCHAR(200),
+    icon VARCHAR(100),
+    sort INT DEFAULT 0,
+    status TINYINT NOT NULL DEFAULT 0,
+    post_count INT DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_board_code (code)
+);
+
+CREATE TABLE IF NOT EXISTS post (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    title VARCHAR(200) NOT NULL,
+    content CLOB NOT NULL,
+    summary VARCHAR(500),
+    cover_image VARCHAR(255),
+    user_id BIGINT NOT NULL,
+    category_id BIGINT,
+    board_id BIGINT,
+    status TINYINT NOT NULL DEFAULT 1,
+    top TINYINT DEFAULT 0,
+    essence TINYINT DEFAULT 0,
+    view_count INT DEFAULT 0,
+    like_count INT DEFAULT 0,
+    comment_count INT DEFAULT 0,
+    favorite_count INT DEFAULT 0,
+    last_comment_at DATETIME,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS comment (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    content CLOB NOT NULL,
+    post_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    parent_id BIGINT DEFAULT 0,
+    reply_user_id BIGINT,
+    like_count INT DEFAULT 0,
+    status TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS content_review (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    content_type VARCHAR(20) NOT NULL,
+    content_id BIGINT NOT NULL,
+    decision VARCHAR(20) NOT NULL,
+    risk_level VARCHAR(20) NOT NULL,
+    risk_score DECIMAL(5,4) NOT NULL DEFAULT 0,
+    reason VARCHAR(500),
+    suggestion VARCHAR(500),
+    model_name VARCHAR(100) NOT NULL DEFAULT 'mock-rule-v1',
+    prompt_version VARCHAR(50) NOT NULL DEFAULT 'rule-v1',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);

@@ -1,11 +1,13 @@
 package com.example.aforum.auth.security;
 
+import com.example.aforum.auth.service.AuthService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -19,18 +21,26 @@ import java.io.IOException;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtils jwtUtils;
     private final UserDetailsService userDetailsService;
+    private final AuthService authService;
+
+    public JwtAuthenticationFilter(JwtUtils jwtUtils, UserDetailsService userDetailsService,
+                                   @Lazy AuthService authService) {
+        this.jwtUtils = jwtUtils;
+        this.userDetailsService = userDetailsService;
+        this.authService = authService;
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         try {
             String token = extractToken(request);
-            if (StringUtils.hasText(token) && jwtUtils.validateToken(token)) {
+            if (StringUtils.hasText(token) && jwtUtils.validateToken(token)
+                    && !authService.isTokenBlacklisted(token)) {
                 String username = jwtUtils.getUsernameFromToken(token);
                 Long userId = jwtUtils.getUserIdFromToken(token);
 

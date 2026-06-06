@@ -6,6 +6,7 @@ import Login from '../pages/Login';
 import Register from '../pages/Register';
 import PostList from '../pages/PostList';
 import PostDetail from '../pages/PostDetail';
+import PostEditor from '../pages/PostEditor';
 import UserProfile from '../pages/UserProfile';
 import AdminDashboard from '../pages/admin/Dashboard';
 import { useAuthStore } from '../store/auth';
@@ -43,6 +44,14 @@ export const router = createBrowserRouter([
       {
         path: 'posts',
         element: <PostList />,
+      },
+      {
+        path: 'posts/new',
+        element: (
+          <ProtectedRoute>
+            <PostEditor />
+          </ProtectedRoute>
+        ),
       },
       {
         path: 'posts/:id',

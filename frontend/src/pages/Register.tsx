@@ -40,7 +40,7 @@ export default function Register() {
           <Form.Item name="email" rules={[{ required: true, type: 'email', message: '请输入有效的邮箱' }]}>
             <Input prefix={<MailOutlined />} placeholder="邮箱" />
           </Form.Item>
-          <Form.Item name="password" rules={[{ required: true, min: 6, message: '密码至少6位' }]}>
+          <Form.Item name="password" rules={[{ required: true, min: 8, message: '密码至少8位' }]}>
             <Input.Password prefix={<LockOutlined />} placeholder="密码" />
           </Form.Item>
           <Form.Item

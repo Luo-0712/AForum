@@ -1,6 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import { Layout, Menu, Input, Button, Space, Dropdown } from 'antd';
-import { UserOutlined, LogoutOutlined, SettingOutlined } from '@ant-design/icons';
+import { UserOutlined, LogoutOutlined, SettingOutlined, PlusOutlined } from '@ant-design/icons';
 import { useAuthStore } from '../store/auth';
 import { useNavigate } from 'react-router-dom';
 
@@ -58,6 +58,11 @@ export default function MainLayout() {
         </div>
         <Space>
           <Search placeholder="搜索" style={{ width: 200 }} />
+          {token && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/posts/new')}>
+              发帖
+            </Button>
+          )}
           {token ? (
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
               <Button type="text" style={{ color: 'white' }}>

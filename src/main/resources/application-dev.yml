@@ -9,9 +9,10 @@ spring:
       - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
       - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
 
-  # Flyway - 暂未准备迁移脚本，禁用
+  # Flyway - 已有开发库从 V2 基线继续补跑后续迁移；空库仍会从 V1 初始化
   flyway:
-    enabled: false
+    enabled: true
+    baseline-version: 2
 
 # 开发环境日志
 logging:

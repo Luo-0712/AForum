@@ -220,6 +220,11 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    public boolean isTokenBlacklisted(String token) {
+        return TOKEN_BLACKLIST.containsKey(token);
+    }
+
+    @Override
     public UserInfoVO getCurrentUserInfo() {
         Long userId = SecurityUtils.getCurrentUserId();
         if (userId == null) {

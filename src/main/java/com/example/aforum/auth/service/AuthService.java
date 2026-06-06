@@ -16,5 +16,7 @@ public interface AuthService {
 
     void logout(String accessToken);
 
+    boolean isTokenBlacklisted(String token);
+
     UserInfoVO getCurrentUserInfo();
 }

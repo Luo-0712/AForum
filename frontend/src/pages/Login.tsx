@@ -19,7 +19,7 @@ export default function Login() {
     try {
       const res: any = await api.post('/auth/login', values);
       if (res.code === 200) {
-        setToken(res.data.token);
+        setToken(res.data.accessToken);
         setUser(res.data.user);
         message.success('登录成功');
         navigate('/');

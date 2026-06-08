@@ -24,7 +24,7 @@ export default function MainLayout() {
       key: 'profile',
       icon: <UserOutlined />,
       label: '个人中心',
-      onClick: () => navigate(`/user/${user?.id}`),
+      onClick: () => navigate('/user'),
     },
     {
       key: 'settings',

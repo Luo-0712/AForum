@@ -38,6 +38,14 @@ export const router = createBrowserRouter([
         element: <PostDetail />,
       },
       {
+        path: 'user',
+        element: (
+          <ProtectedRoute>
+            <UserProfile />
+          </ProtectedRoute>
+        ),
+      },
+      {
         path: 'user/:id',
         element: (
           <ProtectedRoute>

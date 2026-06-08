@@ -12,4 +12,10 @@ public class PostQueryDTO {
     private String keyword;
 
     private Long userId;
+
+    private Long categoryId;
+
+    private Long boardId;
+
+    private String sort;
 }

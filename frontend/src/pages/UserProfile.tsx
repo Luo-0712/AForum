@@ -1,8 +1,8 @@
-import { useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Avatar, Button, Empty, Spin, Tabs, message } from 'antd';
-import { StarOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons';
+import { Avatar, Button, Empty, Form, Input, Modal, Spin, Tabs, message } from 'antd';
+import { EditOutlined, MailOutlined, StarOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons';
 import {
   favoritePost,
   likePost,
@@ -20,6 +20,8 @@ import {
   listFollowing,
   listUserFavorites,
   unfollowUser,
+  updateCurrentUserProfile,
+  type UpdateProfilePayload,
   type UserProfileInfo,
 } from '../api/users';
 import PostPreviewCard from '../components/PostPreviewCard';
@@ -29,6 +31,8 @@ type PostInteraction = {
   post: PostSummary;
   kind: 'like' | 'favorite';
 };
+
+type ProfileFormValues = Required<UpdateProfilePayload>;
 
 interface UserListProps {
   users: UserProfileInfo[];
@@ -40,6 +44,10 @@ interface UserListProps {
 
 function displayName(user?: Pick<UserProfileInfo, 'nickname' | 'username'>) {
   return user?.nickname || user?.username || '匿名用户';
+}
+
+function cleanProfileValue(value?: string | null) {
+  return value?.trim() || '';
 }
 
 function getOptionalNumber(value: unknown) {
@@ -143,6 +151,9 @@ function UserRelationList({ users, isLoading, currentUserId, pendingUserId, onFo
 
 export default function UserProfile() {
   const { id: routeUserId } = useParams();
+  const navigate = useNavigate();
+  const [profileForm] = Form.useForm<ProfileFormValues>();
+  const [isProfileEditorOpen, setIsProfileEditorOpen] = useState(false);
   const token = useAuthStore((state) => state.token);
   const currentUser = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
@@ -231,6 +242,26 @@ export default function UserProfile() {
     onError: () => message.error('关注失败，请稍后再试'),
   });
 
+  const updateProfileMutation = useMutation({
+    mutationFn: (values: ProfileFormValues) =>
+      updateCurrentUserProfile({
+        nickname: cleanProfileValue(values.nickname),
+        bio: cleanProfileValue(values.bio),
+        avatar: cleanProfileValue(values.avatar),
+      }),
+    onSuccess: async (response) => {
+      if (response.code !== 200) {
+        message.error(response.message || '资料更新失败');
+        return;
+      }
+
+      message.success('资料已更新');
+      setIsProfileEditorOpen(false);
+      await queryClient.invalidateQueries({ queryKey: ['user'] });
+    },
+    onError: () => message.error('资料更新失败，请稍后再试'),
+  });
+
   const postsPage = postsQuery.data?.data;
   const favoritesPage = favoritesQuery.data?.data;
   const followingPage = followingQuery.data?.data;
@@ -248,6 +279,15 @@ export default function UserProfile() {
 
   const handlePostInteraction = (post: PostSummary, kind: PostInteraction['kind']) => {
     postInteractionMutation.mutate({ post, kind });
+  };
+
+  const openProfileEditor = (user: UserProfileInfo) => {
+    profileForm.setFieldsValue({
+      nickname: user.nickname || '',
+      bio: user.bio || '',
+      avatar: user.avatar || '',
+    });
+    setIsProfileEditorOpen(true);
   };
 
   const renderPostList = (items: PostSummary[], loading: boolean, emptyText: string) => {
@@ -327,15 +367,25 @@ export default function UserProfile() {
             <p>{profile.bio || (isCurrentUserView ? '完善简介，让大家更快认识你。' : `用户 ID：${profile.id}`)}</p>
           </div>
           {isCurrentUserView ? (
-            <span className="forum-chip forum-chip--primary">当前账号</span>
+            <div className="profile-actions">
+              <span className="profile-current-chip">当前账号</span>
+              <Button type="primary" icon={<EditOutlined />} onClick={() => openProfileEditor(profile)}>
+                编辑资料
+              </Button>
+            </div>
           ) : (
-            <Button
-              type={profile.followedByCurrentUser ? 'default' : 'primary'}
-              loading={pendingUserId === String(profile.id)}
-              onClick={() => followMutation.mutate(profile)}
-            >
-              {profile.followedByCurrentUser ? '已关注' : '关注'}
-            </Button>
+            <div className="profile-actions">
+              <Button icon={<MailOutlined />} onClick={() => navigate(`/messages/${profile.id}`)}>
+                发私信
+              </Button>
+              <Button
+                type={profile.followedByCurrentUser ? 'default' : 'primary'}
+                loading={pendingUserId === String(profile.id)}
+                onClick={() => followMutation.mutate(profile)}
+              >
+                {profile.followedByCurrentUser ? '已关注' : '关注'}
+              </Button>
+            </div>
           )}
         </div>
 
@@ -408,6 +458,36 @@ export default function UserProfile() {
           />
         </div>
       </section>
+
+      <Modal
+        title="编辑个人资料"
+        open={isProfileEditorOpen}
+        okText="保存"
+        cancelText="取消"
+        className="profile-edit-modal"
+        confirmLoading={updateProfileMutation.isPending}
+        onCancel={() => setIsProfileEditorOpen(false)}
+        onOk={() => profileForm.submit()}
+      >
+        <Form
+          form={profileForm}
+          layout="vertical"
+          className="profile-edit-form"
+          onFinish={(values) => updateProfileMutation.mutate(values)}
+        >
+          <Form.Item name="nickname" label="昵称" rules={[{ max: 50, message: '昵称最长50个字符' }]}>
+            <Input placeholder="留空时显示用户名" maxLength={50} showCount />
+          </Form.Item>
+
+          <Form.Item name="avatar" label="头像 URL" rules={[{ max: 255, message: '头像URL最长255个字符' }]}>
+            <Input placeholder="https://example.com/avatar.png" maxLength={255} showCount />
+          </Form.Item>
+
+          <Form.Item name="bio" label="个人简介" rules={[{ max: 500, message: '个人简介最长500个字符' }]}>
+            <Input.TextArea rows={5} placeholder="写一点让大家认识你的简介" maxLength={500} showCount />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 }

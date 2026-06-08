@@ -30,9 +30,12 @@ import com.example.aforum.content.vo.PostSummaryVO;
 import com.example.aforum.interaction.entity.PostFavorite;
 import com.example.aforum.interaction.mapper.PostFavoriteMapper;
 import com.example.aforum.interaction.service.InteractionService;
+import com.example.aforum.message.service.NotificationService;
+import com.example.aforum.search.event.PostSearchIndexEvent;
 import com.example.aforum.user.entity.User;
 import com.example.aforum.user.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -56,15 +59,15 @@ public class PostServiceImpl implements PostService {
     private final ContentAuditService contentAuditService;
     private final PostFavoriteMapper postFavoriteMapper;
     private final InteractionService interactionService;
+    private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public PageResult<PostSummaryVO> listPosts(Long currentUserId, PostQueryDTO query) {
         long pageNum = sanitizePageNum(query.getPageNum());
         long pageSize = sanitizePageSize(query.getPageSize());
         LambdaQueryWrapper<Post> wrapper = new LambdaQueryWrapper<Post>()
-                .eq(Post::getStatus, PostStatus.PUBLISHED.getCode())
-                .orderByDesc(Post::getTop)
-                .orderByDesc(Post::getCreatedAt);
+                .eq(Post::getStatus, PostStatus.PUBLISHED.getCode());
         if (StringUtils.hasText(query.getKeyword())) {
             wrapper.and(w -> w.like(Post::getTitle, query.getKeyword())
                     .or()
@@ -73,6 +76,13 @@ public class PostServiceImpl implements PostService {
         if (query.getUserId() != null) {
             wrapper.eq(Post::getUserId, query.getUserId());
         }
+        if (query.getCategoryId() != null) {
+            wrapper.eq(Post::getCategoryId, query.getCategoryId());
+        }
+        if (query.getBoardId() != null) {
+            wrapper.eq(Post::getBoardId, query.getBoardId());
+        }
+        applyListSort(wrapper, query.getSort());
         Page<Post> page = postMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
         List<PostSummaryVO> records = page.getRecords().stream()
                 .map(post -> toSummaryVO(post, currentUserId))
@@ -117,6 +127,8 @@ public class PostServiceImpl implements PostService {
         if (decision.approved()) {
             increaseBoardPostCount(post.getBoardId());
         }
+        publishIndexEvent(post.getId(), decision.approved() ? PostSearchIndexEvent.Action.UPSERT : PostSearchIndexEvent.Action.DELETE);
+        notificationService.notifyAudit(userId, "post", post.getId(), decision.approved(), decision.reason());
         return toDetailVO(post, latestReview(post.getId()), decision.suggestedTags(), userId);
     }
 
@@ -146,6 +158,8 @@ public class PostServiceImpl implements PostService {
         if (decision.approved() && (oldBoardId == null || !oldBoardId.equals(post.getBoardId()))) {
             increaseBoardPostCount(post.getBoardId());
         }
+        publishIndexEvent(post.getId(), decision.approved() ? PostSearchIndexEvent.Action.UPSERT : PostSearchIndexEvent.Action.DELETE);
+        notificationService.notifyAudit(userId, "post", post.getId(), decision.approved(), decision.reason());
         return toDetailVO(post, latestReview(post.getId()), decision.suggestedTags(), userId);
     }
 
@@ -161,6 +175,7 @@ public class PostServiceImpl implements PostService {
             throw new BusinessException(ErrorCode.FORBIDDEN, "无权删除该帖子");
         }
         postMapper.deleteById(id);
+        publishIndexEvent(id, PostSearchIndexEvent.Action.DELETE);
     }
 
     @Override
@@ -193,9 +208,12 @@ public class PostServiceImpl implements PostService {
             post.setCommentCount(defaultInt(post.getCommentCount()) + 1);
             post.setLastCommentAt(LocalDateTime.now());
             postMapper.updateById(post);
+            publishIndexEvent(post.getId(), PostSearchIndexEvent.Action.UPSERT);
+            sendCommentNotification(userId, post, comment);
         } else {
             comment.setStatus(1);
             commentMapper.updateById(comment);
+            notificationService.notifyAudit(userId, "comment", comment.getId(), false, decision.reason());
         }
         return toCommentVO(comment, userId);
     }
@@ -281,12 +299,34 @@ public class PostServiceImpl implements PostService {
                 .last("LIMIT 1"));
     }
 
+    private void sendCommentNotification(Long userId, Post post, Comment comment) {
+        if (comment.getReplyUserId() != null) {
+            notificationService.notifyReply(userId, comment.getReplyUserId(), post.getId(), comment.getId());
+            if (!comment.getReplyUserId().equals(post.getUserId())) {
+                notificationService.notifyComment(userId, post.getUserId(), post.getId(), comment.getId());
+            }
+            return;
+        }
+        if (comment.getParentId() != null && comment.getParentId() > 0) {
+            Comment parent = commentMapper.selectById(comment.getParentId());
+            if (parent != null) {
+                notificationService.notifyReply(userId, parent.getUserId(), post.getId(), comment.getId());
+                if (!parent.getUserId().equals(post.getUserId())) {
+                    notificationService.notifyComment(userId, post.getUserId(), post.getId(), comment.getId());
+                }
+                return;
+            }
+        }
+        notificationService.notifyComment(userId, post.getUserId(), post.getId(), comment.getId());
+    }
+
     private PostSummaryVO toSummaryVO(Post post, Long currentUserId) {
         ContentReview review = latestReview(post.getId());
         return PostSummaryVO.builder()
                 .id(post.getId())
                 .title(post.getTitle())
                 .summary(post.getSummary())
+                .coverUrl(post.getCoverImage())
                 .userId(post.getUserId())
                 .authorName(userName(post.getUserId()))
                 .categoryId(post.getCategoryId())
@@ -398,6 +438,26 @@ public class PostServiceImpl implements PostService {
 
     private int defaultInt(Integer value) {
         return value == null ? 0 : value;
+    }
+
+    private void applyListSort(LambdaQueryWrapper<Post> wrapper, String sort) {
+        if ("hot".equals(sort)) {
+            wrapper.orderByDesc(Post::getTop)
+                    .orderByDesc(Post::getCommentCount)
+                    .orderByDesc(Post::getLikeCount)
+                    .orderByDesc(Post::getViewCount)
+                    .orderByDesc(Post::getCreatedAt);
+        } else if ("latest".equals(sort)) {
+            wrapper.orderByDesc(Post::getTop)
+                    .orderByDesc(Post::getCreatedAt);
+        } else {
+            wrapper.orderByDesc(Post::getTop)
+                    .orderByDesc(Post::getCreatedAt);
+        }
+    }
+
+    private void publishIndexEvent(Long postId, PostSearchIndexEvent.Action action) {
+        eventPublisher.publishEvent(new PostSearchIndexEvent(postId, action));
     }
 
     private long sanitizePageNum(Long pageNum) {

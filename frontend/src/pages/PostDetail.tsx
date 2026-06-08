@@ -2,7 +2,7 @@ import { Children } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Avatar, Button, Empty, Form, Input, Spin, Typography, message } from 'antd';
-import { EyeOutlined, LikeOutlined, MessageOutlined, SendOutlined, StarOutlined, UserOutlined } from '@ant-design/icons';
+import { EyeOutlined, LikeOutlined, MailOutlined, MessageOutlined, SendOutlined, StarOutlined, UserOutlined } from '@ant-design/icons';
 import {
   createComment,
   favoritePost,
@@ -210,14 +210,19 @@ export default function PostDetail() {
             <span>作者：{post.authorName || '匿名用户'}</span>
           </Link>
           {canFollowAuthor && (
-            <Button
-              size="small"
-              type={author?.followedByCurrentUser ? 'default' : 'primary'}
-              loading={followMutation.isPending || authorQuery.isLoading}
-              onClick={handleFollow}
-            >
-              {author?.followedByCurrentUser ? '已关注' : '关注作者'}
-            </Button>
+            <div className="post-detail__author-actions">
+              <Button size="small" icon={<MailOutlined />} onClick={() => navigate(`/messages/${post.userId}`)}>
+                私信
+              </Button>
+              <Button
+                size="small"
+                type={author?.followedByCurrentUser ? 'default' : 'primary'}
+                loading={followMutation.isPending || authorQuery.isLoading}
+                onClick={handleFollow}
+              >
+                {author?.followedByCurrentUser ? '已关注' : '关注作者'}
+              </Button>
+            </div>
           )}
         </div>
 

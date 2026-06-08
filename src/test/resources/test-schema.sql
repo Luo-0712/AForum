@@ -200,3 +200,80 @@ CREATE TABLE IF NOT EXISTS content_review (
     deleted TINYINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id)
 );
+
+CREATE TABLE IF NOT EXISTS notification (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    sender_id BIGINT,
+    type VARCHAR(20) NOT NULL,
+    title VARCHAR(100),
+    content VARCHAR(500),
+    target_id BIGINT,
+    target_type VARCHAR(20),
+    read_status TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS private_message (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    sender_id BIGINT NOT NULL,
+    receiver_id BIGINT NOT NULL,
+    content CLOB NOT NULL,
+    message_type VARCHAR(20) DEFAULT 'text',
+    read_status TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS agent (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    name VARCHAR(50) NOT NULL,
+    description VARCHAR(500),
+    type VARCHAR(20) NOT NULL,
+    config CLOB,
+    status TINYINT NOT NULL DEFAULT 1,
+    user_id BIGINT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS agent_task_log (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    agent_id BIGINT NOT NULL,
+    task_type VARCHAR(50),
+    input CLOB,
+    output CLOB,
+    status TINYINT NOT NULL DEFAULT 1,
+    duration BIGINT,
+    error_message VARCHAR(500),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS agent_action (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    agent_id BIGINT,
+    action_type VARCHAR(50) NOT NULL,
+    target_type VARCHAR(50) NOT NULL,
+    target_id BIGINT NOT NULL,
+    payload CLOB,
+    status VARCHAR(20) NOT NULL DEFAULT 'proposed',
+    risk_level VARCHAR(20) NOT NULL DEFAULT 'low',
+    proposed_by VARCHAR(100) NOT NULL DEFAULT 'mock-rule-v1',
+    approved_by BIGINT,
+    executed_at DATETIME,
+    error_message VARCHAR(500),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);

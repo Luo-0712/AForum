@@ -95,3 +95,14 @@ springdoc:
     path: /swagger-ui.html
     tags-sorter: alpha
     operations-sorter: alpha
+
+search:
+  enabled: ${SEARCH_ENABLED:true}
+  fallback-to-mysql: ${SEARCH_FALLBACK_TO_MYSQL:true}
+  elasticsearch:
+    uris:
+      - ${ELASTICSEARCH_URI:http://localhost:9200}
+    username: ${ELASTICSEARCH_USERNAME:}
+    password: ${ELASTICSEARCH_PASSWORD:}
+    post-index: ${ELASTICSEARCH_POST_INDEX:aforum_posts}
+    post-index-version: ${ELASTICSEARCH_POST_INDEX_VERSION:aforum_posts_v1}

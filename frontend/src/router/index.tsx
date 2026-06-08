@@ -8,8 +8,13 @@ import PostList from '../pages/PostList';
 import PostDetail from '../pages/PostDetail';
 import PostEditor from '../pages/PostEditor';
 import UserProfile from '../pages/UserProfile';
+import Notifications from '../pages/Notifications';
+import Messages from '../pages/Messages';
 import AdminDashboard from '../pages/admin/Dashboard';
 import AccessControl from '../pages/admin/AccessControl';
+import UserManagement from '../pages/admin/UserManagement';
+import PostManagement from '../pages/admin/PostManagement';
+import BoardCategoryManagement from '../pages/admin/BoardCategoryManagement';
 import { AdminRoute, ProtectedRoute } from './guards';
 
 export const router = createBrowserRouter([
@@ -53,6 +58,30 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+      {
+        path: 'notifications',
+        element: (
+          <ProtectedRoute>
+            <Notifications />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'messages',
+        element: (
+          <ProtectedRoute>
+            <Messages />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'messages/:peerUserId',
+        element: (
+          <ProtectedRoute>
+            <Messages />
+          </ProtectedRoute>
+        ),
+      },
     ],
   },
   {
@@ -74,6 +103,18 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <AdminDashboard />,
+      },
+      {
+        path: 'users',
+        element: <UserManagement />,
+      },
+      {
+        path: 'posts',
+        element: <PostManagement />,
+      },
+      {
+        path: 'boards',
+        element: <BoardCategoryManagement />,
       },
       {
         path: 'access',

@@ -18,6 +18,8 @@ import com.example.aforum.interaction.mapper.UserFollowMapper;
 import com.example.aforum.interaction.service.InteractionService;
 import com.example.aforum.interaction.vo.FollowStateVO;
 import com.example.aforum.interaction.vo.InteractionStateVO;
+import com.example.aforum.message.service.NotificationService;
+import com.example.aforum.search.service.PostSearchIndexService;
 import com.example.aforum.user.entity.User;
 import com.example.aforum.user.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
@@ -35,23 +37,32 @@ public class InteractionServiceImpl implements InteractionService {
     private final PostFavoriteMapper postFavoriteMapper;
     private final CommentLikeMapper commentLikeMapper;
     private final UserFollowMapper userFollowMapper;
+    private final NotificationService notificationService;
+    private final PostSearchIndexService postSearchIndexService;
 
     @Override
     @Transactional
     public InteractionStateVO likePost(Long userId, Long postId) {
         requireUser(userId);
-        requireVisiblePost(postId);
+        Post post = requireVisiblePost(postId);
         PostLike like = postLikeMapper.selectAny(postId, userId);
+        boolean created = false;
         if (like == null) {
             PostLike next = new PostLike();
             next.setPostId(postId);
             next.setUserId(userId);
             next.setDeleted(0);
             postLikeMapper.insert(next);
+            created = true;
         } else if (!isActive(like)) {
             postLikeMapper.restore(like.getId());
+            created = true;
         }
         int count = syncPostLikeCount(postId);
+        postSearchIndexService.updatePostStats(postId);
+        if (created) {
+            notificationService.notifyLike(userId, post.getUserId(), "post", postId);
+        }
         return new InteractionStateVO(true, count);
     }
 
@@ -65,6 +76,7 @@ public class InteractionServiceImpl implements InteractionService {
             postLikeMapper.deleteById(like.getId());
         }
         int count = syncPostLikeCount(postId);
+        postSearchIndexService.updatePostStats(postId);
         return new InteractionStateVO(false, count);
     }
 
@@ -72,18 +84,25 @@ public class InteractionServiceImpl implements InteractionService {
     @Transactional
     public InteractionStateVO favoritePost(Long userId, Long postId) {
         requireUser(userId);
-        requireVisiblePost(postId);
+        Post post = requireVisiblePost(postId);
         PostFavorite favorite = postFavoriteMapper.selectAny(postId, userId);
+        boolean created = false;
         if (favorite == null) {
             PostFavorite next = new PostFavorite();
             next.setPostId(postId);
             next.setUserId(userId);
             next.setDeleted(0);
             postFavoriteMapper.insert(next);
+            created = true;
         } else if (!isActive(favorite)) {
             postFavoriteMapper.restore(favorite.getId());
+            created = true;
         }
         int count = syncPostFavoriteCount(postId);
+        postSearchIndexService.updatePostStats(postId);
+        if (created) {
+            notificationService.notifyFavorite(userId, post.getUserId(), postId);
+        }
         return new InteractionStateVO(true, count);
     }
 
@@ -97,6 +116,7 @@ public class InteractionServiceImpl implements InteractionService {
             postFavoriteMapper.deleteById(favorite.getId());
         }
         int count = syncPostFavoriteCount(postId);
+        postSearchIndexService.updatePostStats(postId);
         return new InteractionStateVO(false, count);
     }
 
@@ -104,18 +124,24 @@ public class InteractionServiceImpl implements InteractionService {
     @Transactional
     public InteractionStateVO likeComment(Long userId, Long commentId) {
         requireUser(userId);
-        requireVisibleComment(commentId);
+        Comment comment = requireVisibleComment(commentId);
         CommentLike like = commentLikeMapper.selectAny(commentId, userId);
+        boolean created = false;
         if (like == null) {
             CommentLike next = new CommentLike();
             next.setCommentId(commentId);
             next.setUserId(userId);
             next.setDeleted(0);
             commentLikeMapper.insert(next);
+            created = true;
         } else if (!isActive(like)) {
             commentLikeMapper.restore(like.getId());
+            created = true;
         }
         int count = syncCommentLikeCount(commentId);
+        if (created) {
+            notificationService.notifyLike(userId, comment.getUserId(), "comment", commentId);
+        }
         return new InteractionStateVO(true, count);
     }
 
@@ -141,14 +167,20 @@ public class InteractionServiceImpl implements InteractionService {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Cannot follow yourself");
         }
         UserFollow follow = userFollowMapper.selectAny(userId, followUserId);
+        boolean created = false;
         if (follow == null) {
             UserFollow next = new UserFollow();
             next.setUserId(userId);
             next.setFollowUserId(followUserId);
             next.setDeleted(0);
             userFollowMapper.insert(next);
+            created = true;
         } else if (!isActive(follow)) {
             userFollowMapper.restore(follow.getId());
+            created = true;
+        }
+        if (created) {
+            notificationService.notifyFollow(userId, followUserId);
         }
         return followState(userId, followUserId, true);
     }

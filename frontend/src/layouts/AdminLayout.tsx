@@ -1,6 +1,12 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Layout, Menu } from 'antd';
-import { DashboardOutlined, FileTextOutlined, SafetyCertificateOutlined, UserOutlined } from '@ant-design/icons';
+import {
+  AppstoreOutlined,
+  DashboardOutlined,
+  FileTextOutlined,
+  SafetyCertificateOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
 import { useAuthStore } from '../store/auth';
 
 const { Header, Sider, Content } = Layout;
@@ -19,36 +25,45 @@ export default function AdminLayout() {
     ? 'users'
     : location.pathname.includes('/posts')
       ? 'posts'
-      : location.pathname.includes('/access')
-        ? 'access'
-        : 'dashboard';
+      : location.pathname.includes('/boards')
+        ? 'boards'
+        : location.pathname.includes('/access')
+          ? 'access'
+          : 'dashboard';
 
   const menuItems = [
     {
       key: 'dashboard',
       icon: <DashboardOutlined />,
-      label: '仪表盘',
+      label: 'Dashboard',
       onClick: () => navigate('/admin'),
       visible: can('admin:dashboard') || roles.includes('ADMIN'),
     },
     {
       key: 'users',
       icon: <UserOutlined />,
-      label: '用户管理',
+      label: 'Users',
       onClick: () => navigate('/admin/users'),
       visible: canAny(['user:list', 'user:edit']),
     },
     {
       key: 'posts',
       icon: <FileTextOutlined />,
-      label: '帖子管理',
+      label: 'Posts',
       onClick: () => navigate('/admin/posts'),
       visible: canAny(['post:list', 'post:review']),
     },
     {
+      key: 'boards',
+      icon: <AppstoreOutlined />,
+      label: 'Boards',
+      onClick: () => navigate('/admin/boards'),
+      visible: canAny(['board:list', 'board:edit', 'category:list', 'category:edit']),
+    },
+    {
       key: 'access',
       icon: <SafetyCertificateOutlined />,
-      label: '权限管理',
+      label: 'Access',
       onClick: () => navigate('/admin/access'),
       visible: canAny(['role:manage', 'permission:manage']),
     },
@@ -75,7 +90,7 @@ export default function AdminLayout() {
         <Header className="admin-header">
           <div>
             <span className="eyebrow">Admin</span>
-            <h1>管理后台</h1>
+            <h1>Management</h1>
           </div>
         </Header>
         <Content className="admin-content">

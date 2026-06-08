@@ -78,7 +78,15 @@ export interface CommentPayload {
   replyUserId?: Numeric;
 }
 
-export function listPosts(params: { pageNum?: number; pageSize?: number; keyword?: string; userId?: Numeric }) {
+export function listPosts(params: {
+  pageNum?: number;
+  pageSize?: number;
+  keyword?: string;
+  userId?: Numeric;
+  categoryId?: Numeric;
+  boardId?: Numeric;
+  sort?: string;
+}) {
   return api.get<unknown, ApiResponse<PageResult<PostSummary>>>('/posts', { params });
 }
 

@@ -49,20 +49,21 @@ services:
     networks:
       - aforum-network
 
-  # Elasticsearch 8.x - 搜索引擎（预留）
-  # elasticsearch:
-  #   image: elasticsearch:8.11.0
-  #   container_name: aforum-elasticsearch
-  #   restart: unless-stopped
-  #   ports:
-  #     - "9200:9200"
-  #   environment:
-  #     - discovery.type=single-node
-  #     - xpack.security.enabled=false
-  #   volumes:
-  #     - elasticsearch-data:/usr/share/elasticsearch/data
-  #   networks:
-  #     - aforum-network
+  # Elasticsearch 8.x - 搜索引擎
+  elasticsearch:
+    image: elasticsearch:8.15.5
+    container_name: aforum-elasticsearch
+    restart: unless-stopped
+    ports:
+      - "9200:9200"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - aforum-network
 
   # RabbitMQ - 消息队列（预留）
   # rabbitmq:
@@ -84,7 +85,7 @@ volumes:
   mysql-data:
   postgres-data:
   redis-data:
-  # elasticsearch-data:
+  elasticsearch-data:
   # rabbitmq-data:
 
 networks:

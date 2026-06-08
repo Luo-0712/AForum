@@ -24,3 +24,12 @@ logging:
 
 pagehelper:
   helper-dialect: h2
+
+jwt:
+  secret: aforum-test-secret-key-must-be-at-least-256-bits-long
+  expiration: 86400000
+  refresh-expiration: 604800000
+
+search:
+  enabled: false
+  fallback-to-mysql: true

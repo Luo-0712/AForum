@@ -12,6 +12,7 @@ public class PostSummaryVO {
     private Long id;
     private String title;
     private String summary;
+    private String coverUrl;
     private Long userId;
     private String authorName;
     private Long categoryId;

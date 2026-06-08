@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import type { ReactNode } from 'react';
 import { EyeOutlined, LikeOutlined, MessageOutlined, StarOutlined } from '@ant-design/icons';
 import type { PostSummary } from '../api/posts';
 import ForumStatPill from './ForumStatPill';
@@ -10,6 +11,8 @@ interface PostPreviewCardProps {
   favoritePending?: boolean;
   onLikeToggle?: (post: PostSummary) => void;
   onFavoriteToggle?: (post: PostSummary) => void;
+  titleNode?: ReactNode;
+  summaryNode?: ReactNode;
 }
 
 function formatDate(value?: string) {
@@ -37,6 +40,8 @@ export default function PostPreviewCard({
   favoritePending = false,
   onLikeToggle,
   onFavoriteToggle,
+  titleNode,
+  summaryNode,
 }: PostPreviewCardProps) {
   const href = `/posts/${post.id}`;
   const hasCover = Boolean(post.coverUrl);
@@ -52,10 +57,12 @@ export default function PostPreviewCard({
         </div>
 
         <Link className="post-preview-card__title" to={href}>
-          {post.title}
+          {titleNode || post.title}
         </Link>
 
-        <p className="post-preview-card__summary">{post.summary || '暂无摘要，打开帖子查看完整讨论内容。'}</p>
+        <p className="post-preview-card__summary">
+          {summaryNode || post.summary || '暂无摘要，打开帖子查看完整讨论内容。'}
+        </p>
 
         <div className="post-preview-card__footer">
           <ForumStatPill icon={<EyeOutlined />} value={post.viewCount || 0} label="浏览" />

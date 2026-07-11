@@ -33,6 +33,9 @@ build/
 .vscode/
 /docs/
 
+### Claude ###
+.claude/
+
 ### Environment ###
 .env
 .env.local
@@ -51,3 +54,4 @@ node_modules/
 dist/
 .npm
 *.tgz
+/.workbuddy/

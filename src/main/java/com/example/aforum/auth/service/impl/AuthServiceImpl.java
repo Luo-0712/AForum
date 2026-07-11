@@ -11,6 +11,7 @@ import com.example.aforum.auth.mapper.UserRoleMapper;
 import com.example.aforum.auth.security.JwtUtils;
 import com.example.aforum.auth.service.AuthService;
 import com.example.aforum.auth.service.AuthorizationService;
+import com.example.aforum.auth.service.TokenBlacklistStore;
 import com.example.aforum.auth.vo.LoginVO;
 import com.example.aforum.auth.vo.UserInfoVO;
 import com.example.aforum.auth.vo.UserInfoVOMapper;
@@ -33,7 +34,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
@@ -48,8 +48,7 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final UserInfoVOMapper userInfoVOMapper;
     private final AuthorizationService authorizationService;
-
-    private static final ConcurrentHashMap<String, Long> TOKEN_BLACKLIST = new ConcurrentHashMap<>();
+    private final TokenBlacklistStore tokenBlacklistStore;
 
     private static final long ACCESS_EXPIRATION_SECONDS = 86400L;
 
@@ -177,7 +176,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // 2. 检查是否在黑名单
-        if (TOKEN_BLACKLIST.containsKey(refreshToken)) {
+        if (tokenBlacklistStore.isBlacklisted(refreshToken)) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "refreshToken已失效");
         }
 
@@ -212,13 +211,13 @@ public class AuthServiceImpl implements AuthService {
         Claims claims = jwtUtils.parseToken(accessToken);
         long ttl = claims.getExpiration().getTime() - System.currentTimeMillis();
         if (ttl > 0) {
-            TOKEN_BLACKLIST.put(accessToken, claims.getExpiration().getTime());
+            tokenBlacklistStore.blacklist(accessToken, claims.getExpiration().getTime());
         }
     }
 
     @Override
     public boolean isTokenBlacklisted(String token) {
-        return TOKEN_BLACKLIST.containsKey(token);
+        return tokenBlacklistStore.isBlacklisted(token);
     }
 
     @Override
@@ -243,7 +242,6 @@ public class AuthServiceImpl implements AuthService {
 
     @Scheduled(fixedRate = 600000)
     public void cleanupBlacklist() {
-        long now = System.currentTimeMillis();
-        TOKEN_BLACKLIST.entrySet().removeIf(entry -> entry.getValue() < now);
+        tokenBlacklistStore.cleanup();
     }
 }

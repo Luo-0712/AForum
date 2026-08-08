@@ -1,0 +1,39 @@
+# Docker 环境专用配置：通过 docker-compose 网络访问基础设施服务
+# 通过 SPRING_PROFILES_ACTIVE=docker 激活
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:mysql://mysql:3306/aforum?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: 0
+      timeout: 10000
+  flyway:
+    baseline-on-migrate: true
+    validate-on-migrate: true
+
+# 位于 Nginx 反向代理之后，启用 Forwarded 头支持（获取真实 IP / 协议）
+server:
+  forward-headers-strategy: framework
+
+search:
+  enabled: ${SEARCH_ENABLED:true}
+  fallback-to-mysql: ${SEARCH_FALLBACK_TO_MYSQL:true}
+  elasticsearch:
+    uris:
+      - ${ELASTICSEARCH_URI:http://elasticsearch:9200}
+    username: ${ELASTICSEARCH_USERNAME:}
+    password: ${ELASTICSEARCH_PASSWORD:}
+    post-index: ${ELASTICSEARCH_POST_INDEX:aforum_posts}
+    post-index-version: ${ELASTICSEARCH_POST_INDEX_VERSION:aforum_posts_v1}
+
+# Docker 环境日志
+logging:
+  level:
+    root: INFO
+    com.example.aforum: INFO
+    org.springframework.security: INFO

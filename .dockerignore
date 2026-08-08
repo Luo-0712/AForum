@@ -1,0 +1,25 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.idea
+*.iml
+
+# Maven / 构建产物
+.mvn
+target
+*.log
+
+# 前端（后端镜像不需要，避免把 node_modules 打进构建上下文）
+frontend
+
+# 临时/本地文件
+output
+temp_images
+docs
+tools
+.env
+.env.*
+*.md

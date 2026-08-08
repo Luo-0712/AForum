@@ -1,4 +1,19 @@
-# Logs
+# ============================================================
+# frontend - .gitignore（Nginx/Node 构建产物 + 本地环境）
+# ============================================================
+
+# ---------- 构建产物 ----------
+node_modules
+dist
+dist-ssr
+*.local
+
+# ---------- 环境变量（.env.example 保留入库） ----------
+.env
+.env.*
+!.env.example
+
+# ---------- 日志 ----------
 logs
 *.log
 npm-debug.log*
@@ -7,15 +22,12 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
+# ---------- IDE / 编辑器 ----------
 .vscode/*
 !.vscode/extensions.json
 .idea
+
+# ---------- 系统 ----------
 .DS_Store
 *.suo
 *.ntvs*

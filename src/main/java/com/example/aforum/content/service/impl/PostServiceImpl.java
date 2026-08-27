@@ -61,11 +61,19 @@ public class PostServiceImpl implements PostService {
     private final InteractionService interactionService;
     private final NotificationService notificationService;
     private final ApplicationEventPublisher eventPublisher;
+    private final ContentCacheManager contentCacheManager;
 
     @Override
     public PageResult<PostSummaryVO> listPosts(Long currentUserId, PostQueryDTO query) {
         long pageNum = sanitizePageNum(query.getPageNum());
         long pageSize = sanitizePageSize(query.getPageSize());
+        query.setPageNum(pageNum);
+        query.setPageSize(pageSize);
+        return contentCacheManager.getList(query, currentUserId,
+                () -> loadPublicList(query, pageNum, pageSize));
+    }
+
+    private PageResult<PostSummaryVO> loadPublicList(PostQueryDTO query, long pageNum, long pageSize) {
         LambdaQueryWrapper<Post> wrapper = new LambdaQueryWrapper<Post>()
                 .eq(Post::getStatus, PostStatus.PUBLISHED.getCode());
         if (StringUtils.hasText(query.getKeyword())) {
@@ -85,20 +93,27 @@ public class PostServiceImpl implements PostService {
         applyListSort(wrapper, query.getSort());
         Page<Post> page = postMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
         List<PostSummaryVO> records = page.getRecords().stream()
-                .map(post -> toSummaryVO(post, currentUserId))
+                .map(post -> toSummaryVO(post, null))
                 .toList();
         return new PageResult<>(records, page.getTotal(), page.getSize(), page.getCurrent());
     }
 
     @Override
-    @Transactional
     public PostDetailVO getPostDetail(Long currentUserId, Long id, boolean increaseView) {
-        Post post = getVisiblePost(id);
-        if (increaseView && PostStatus.PUBLISHED.getCode().equals(post.getStatus())) {
-            post.setViewCount(defaultInt(post.getViewCount()) + 1);
-            postMapper.updateById(post);
+        if (increaseView) {
+            postMapper.incrementPublishedViewCount(id);
         }
-        return toDetailVO(post, latestReview(post.getId()), suggestedTags(post.getTitle(), post.getContent()), currentUserId);
+        return contentCacheManager.getDetail(
+                currentUserId,
+                id,
+                () -> {
+                    Post cachedLoaderPost = getVisiblePost(id);
+                    return toDetailVO(
+                            cachedLoaderPost,
+                            latestReview(cachedLoaderPost.getId()),
+                            suggestedTags(cachedLoaderPost.getTitle(), cachedLoaderPost.getContent()),
+                            currentUserId);
+                });
     }
 
     @Override
@@ -129,6 +144,7 @@ public class PostServiceImpl implements PostService {
         }
         publishIndexEvent(post.getId(), decision.approved() ? PostSearchIndexEvent.Action.UPSERT : PostSearchIndexEvent.Action.DELETE);
         notificationService.notifyAudit(userId, "post", post.getId(), decision.approved(), decision.reason());
+        contentCacheManager.bumpPostGeneration();
         return toDetailVO(post, latestReview(post.getId()), decision.suggestedTags(), userId);
     }
 
@@ -160,6 +176,7 @@ public class PostServiceImpl implements PostService {
         }
         publishIndexEvent(post.getId(), decision.approved() ? PostSearchIndexEvent.Action.UPSERT : PostSearchIndexEvent.Action.DELETE);
         notificationService.notifyAudit(userId, "post", post.getId(), decision.approved(), decision.reason());
+        contentCacheManager.bumpPostGeneration();
         return toDetailVO(post, latestReview(post.getId()), decision.suggestedTags(), userId);
     }
 
@@ -176,6 +193,7 @@ public class PostServiceImpl implements PostService {
         }
         postMapper.deleteById(id);
         publishIndexEvent(id, PostSearchIndexEvent.Action.DELETE);
+        contentCacheManager.bumpPostGeneration();
     }
 
     @Override
@@ -214,6 +232,9 @@ public class PostServiceImpl implements PostService {
             comment.setStatus(1);
             commentMapper.updateById(comment);
             notificationService.notifyAudit(userId, "comment", comment.getId(), false, decision.reason());
+        }
+        if (decision.approved()) {
+            contentCacheManager.bumpPostGeneration();
         }
         return toCommentVO(comment, userId);
     }

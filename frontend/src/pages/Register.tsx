@@ -29,8 +29,8 @@ export default function Register() {
       } else {
         message.error(res.message || '注册失败');
       }
-    } catch {
-      message.error('注册失败');
+    } catch (error: any) {
+      message.error(error?.response?.data?.message || '注册失败');
     }
   };
 

@@ -26,10 +26,13 @@ api.interceptors.response.use(
   (error) => {
     if (error.response) {
       const { status, data } = error.response;
+      const isAuthRequest = error.config?.url?.startsWith('/auth/');
       switch (status) {
         case 401:
-          useAuthStore.getState().logout();
-          window.location.href = '/login';
+          if (!isAuthRequest) {
+            useAuthStore.getState().logout();
+            window.location.href = '/login';
+          }
           break;
         case 403:
           message.error(data?.message || '无权限访问');

@@ -147,7 +147,10 @@ class InteractionApiIntegrationTests {
         AuthSession follower = registerAndGetSession("follower");
         AuthSession target = registerAndGetSession("target");
 
-        JsonNode selfFollow = postWithToken("/api/users/" + follower.userId() + "/follow", follower.token());
+        JsonNode selfFollow = readJson(mockMvc.perform(post("/api/users/{id}/follow", follower.userId())
+                        .header("Authorization", "Bearer " + follower.token()))
+                .andExpect(status().isBadRequest())
+                .andReturn());
         assertThat(selfFollow.path("code").asInt()).isEqualTo(400);
 
         JsonNode follow = postWithToken("/api/users/" + target.userId() + "/follow", follower.token());

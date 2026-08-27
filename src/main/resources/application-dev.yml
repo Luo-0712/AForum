@@ -1,25 +1,18 @@
 spring:
-  # 开发环境数据源
   datasource:
     url: jdbc:mysql://localhost:3306/aforum_dev?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
 
-  # Redis - 由 docker-compose 提供 redis:7-alpine 服务，启用自动配置
-  # 连接参数复用 application.yml 的 spring.data.redis.*（REDIS_HOST/PORT/PASSWORD 环境变量）
-
-  # Flyway - 已有开发库从 V2 基线继续补跑后续迁移；空库仍会从 V1 初始化
   flyway:
     enabled: true
     baseline-version: 2
 
-# 开发环境日志
 logging:
   level:
-    root: DEBUG
-    com.example.aforum: DEBUG
-    org.springframework.security: DEBUG
-    org.springframework.web: DEBUG
+    root: INFO
+    com.example.aforum: INFO
+    org.springframework.security: WARN
+    org.springframework.web: INFO
 
-# MyBatis Plus 开发环境配置
 mybatis-plus:
   configuration:
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl

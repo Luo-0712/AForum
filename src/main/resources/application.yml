@@ -83,9 +83,21 @@ management:
     web:
       exposure:
         include: health,info,metrics
+  health:
+    elasticsearch:
+      enabled: ${SEARCH_ENABLED:true}
   endpoint:
     health:
       show-details: when-authorized
+
+# Redis 热点缓存配置
+app:
+  cache:
+    enabled: ${CACHE_ENABLED:true}
+    post-list-ttl-seconds: ${CACHE_POST_LIST_TTL_SECONDS:120}
+    post-detail-ttl-seconds: ${CACHE_POST_DETAIL_TTL_SECONDS:300}
+    search-options-ttl-seconds: ${CACHE_SEARCH_OPTIONS_TTL_SECONDS:600}
+    negative-ttl-seconds: ${CACHE_NEGATIVE_TTL_SECONDS:30}
 
 # SpringDoc 配置
 springdoc:

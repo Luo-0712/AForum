@@ -46,8 +46,8 @@ export default function Login() {
       } else {
         message.error(res.message || '登录失败');
       }
-    } catch {
-      message.error('登录失败');
+    } catch (error: any) {
+      message.error(error?.response?.data?.message || '登录失败');
     }
   };
 

@@ -14,4 +14,7 @@ public interface PostMapper extends BaseMapper<Post> {
 
     @Update("UPDATE post SET favorite_count = #{count} WHERE id = #{postId}")
     int updateFavoriteCount(@Param("postId") Long postId, @Param("count") int count);
+
+    @Update("UPDATE post SET view_count = view_count + 1 WHERE id = #{postId} AND status = 1 AND deleted = 0")
+    int incrementPublishedViewCount(@Param("postId") Long postId);
 }

@@ -4,6 +4,7 @@ import com.example.aforum.common.result.ErrorCode;
 import com.example.aforum.common.result.Result;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import org.springframework.http.ResponseEntity;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
@@ -25,9 +26,13 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
-    public Result<Void> handleBusinessException(BusinessException e) {
+    public ResponseEntity<Result<Void>> handleBusinessException(BusinessException e) {
         log.warn("业务异常: {}", e.getMessage());
-        return Result.error(e.getCode(), e.getMessage());
+        HttpStatus httpStatus = HttpStatus.resolve(e.getCode());
+        if (httpStatus == null) {
+            httpStatus = HttpStatus.BAD_REQUEST;
+        }
+        return ResponseEntity.status(httpStatus).body(Result.error(e.getCode(), e.getMessage()));
     }
 
     @ExceptionHandler({AccessDeniedException.class, AuthorizationDeniedException.class})

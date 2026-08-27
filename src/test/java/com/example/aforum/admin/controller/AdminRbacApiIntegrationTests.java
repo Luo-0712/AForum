@@ -138,7 +138,7 @@ class AdminRbacApiIntegrationTests {
                         .header("Authorization", "Bearer " + admin.token())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of("roleIds", new Long[]{roleId("SUPER_ADMIN")}))))
-                .andExpect(status().isOk())
+                .andExpect(status().isForbidden())
                 .andReturn());
 
         assertThat(blocked.path("code").asInt()).isEqualTo(403);
@@ -198,7 +198,7 @@ class AdminRbacApiIntegrationTests {
                                 "name", "超级管理员",
                                 "code", "SUPER_ADMIN",
                                 "description", "attempted update"))))
-                .andExpect(status().isOk())
+                .andExpect(status().isForbidden())
                 .andReturn());
 
         assertThat(blocked.path("code").asInt()).isEqualTo(403);
@@ -224,7 +224,7 @@ class AdminRbacApiIntegrationTests {
                         .header("Authorization", "Bearer " + superAdmin.token())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of("status", 1))))
-                .andExpect(status().isOk())
+                .andExpect(status().isBadRequest())
                 .andReturn());
         assertThat(blocked.path("code").asInt()).isEqualTo(400);
     }
@@ -239,7 +239,7 @@ class AdminRbacApiIntegrationTests {
                         .header("Authorization", "Bearer " + superAdmin.token())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of("roleIds", new Long[]{roleId("USER")}))))
-                .andExpect(status().isOk())
+                .andExpect(status().isConflict())
                 .andReturn());
 
         assertThat(blocked.path("code").asInt()).isEqualTo(409);

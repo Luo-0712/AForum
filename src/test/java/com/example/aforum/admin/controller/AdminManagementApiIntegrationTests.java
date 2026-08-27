@@ -210,13 +210,13 @@ class AdminManagementApiIntegrationTests {
 
         JsonNode boardDelete = readJson(mockMvc.perform(delete("/api/admin/boards/{id}", board.getId())
                         .header("Authorization", "Bearer " + admin.token()))
-                .andExpect(status().isOk())
+                .andExpect(status().isConflict())
                 .andReturn());
         assertThat(boardDelete.path("code").asInt()).isEqualTo(409);
 
         JsonNode categoryDelete = readJson(mockMvc.perform(delete("/api/admin/categories/{id}", category.getId())
                         .header("Authorization", "Bearer " + admin.token()))
-                .andExpect(status().isOk())
+                .andExpect(status().isConflict())
                 .andReturn());
         assertThat(categoryDelete.path("code").asInt()).isEqualTo(409);
     }

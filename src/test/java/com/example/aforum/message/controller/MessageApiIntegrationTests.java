@@ -162,7 +162,7 @@ class MessageApiIntegrationTests {
                                 "receiverIds", new String[]{receiver.userId()},
                                 "title", "系统通知",
                                 "content", "普通用户不能发送"))))
-                .andExpect(status().isOk())
+                .andExpect(status().isForbidden())
                 .andExpect(result -> assertThat(readJson(result).path("code").asInt()).isEqualTo(403));
 
         readJson(mockMvc.perform(post("/api/admin/notifications/system")

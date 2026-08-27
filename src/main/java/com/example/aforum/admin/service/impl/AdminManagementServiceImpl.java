@@ -22,6 +22,7 @@ import com.example.aforum.auth.mapper.RoleMapper;
 import com.example.aforum.auth.mapper.UserRoleMapper;
 import com.example.aforum.auth.service.AuthorizationService;
 import com.example.aforum.common.base.BaseEntity;
+import com.example.aforum.content.service.impl.ContentCacheManager;
 import com.example.aforum.common.constant.PostStatus;
 import com.example.aforum.common.constant.UserStatus;
 import com.example.aforum.common.exception.BusinessException;
@@ -73,6 +74,7 @@ public class AdminManagementServiceImpl implements AdminManagementService {
     private final AuthorizationService authorizationService;
     private final NotificationService notificationService;
     private final ApplicationEventPublisher eventPublisher;
+    private final ContentCacheManager contentCacheManager;
 
     @Override
     public AdminDashboardVO overview() {
@@ -135,6 +137,7 @@ public class AdminManagementServiceImpl implements AdminManagementService {
         applyBoard(board, dto);
         board.setPostCount(0);
         boardMapper.insert(board);
+        contentCacheManager.evictSearchOptions();
         return toBoardVO(board);
     }
 
@@ -145,6 +148,7 @@ public class AdminManagementServiceImpl implements AdminManagementService {
         ensureBoardCodeAvailable(dto.getCode(), id);
         applyBoard(board, dto);
         boardMapper.updateById(board);
+        contentCacheManager.evictSearchOptions();
         return toBoardVO(board);
     }
 
@@ -157,6 +161,7 @@ public class AdminManagementServiceImpl implements AdminManagementService {
             throw new BusinessException(ErrorCode.CONFLICT, "board is used by posts");
         }
         boardMapper.deleteById(id);
+        contentCacheManager.evictSearchOptions();
     }
 
     @Override
@@ -177,6 +182,7 @@ public class AdminManagementServiceImpl implements AdminManagementService {
         Category category = new Category();
         applyCategory(category, dto);
         categoryMapper.insert(category);
+        contentCacheManager.evictSearchOptions();
         return toCategoryVO(category);
     }
 
@@ -188,6 +194,7 @@ public class AdminManagementServiceImpl implements AdminManagementService {
         validateParentCategory(dto.getParentId(), id);
         applyCategory(category, dto);
         categoryMapper.updateById(category);
+        contentCacheManager.evictSearchOptions();
         return toCategoryVO(category);
     }
 
@@ -204,6 +211,7 @@ public class AdminManagementServiceImpl implements AdminManagementService {
             throw new BusinessException(ErrorCode.CONFLICT, "category is used by posts");
         }
         categoryMapper.deleteById(id);
+        contentCacheManager.evictSearchOptions();
     }
 
     @Override
@@ -270,6 +278,7 @@ public class AdminManagementServiceImpl implements AdminManagementService {
         saveManualReview(post.getId(), "approved", "low", BigDecimal.ZERO, "Approved by admin");
         notificationService.notifyAudit(post.getUserId(), "post", post.getId(), true, "Approved by admin");
         publishIndexEvent(post.getId(), PostSearchIndexEvent.Action.UPSERT);
+        contentCacheManager.bumpPostGeneration();
         return toPostVO(post);
     }
 
@@ -287,6 +296,7 @@ public class AdminManagementServiceImpl implements AdminManagementService {
         saveManualReview(post.getId(), "rejected", "medium", BigDecimal.ONE, reason);
         notificationService.notifyAudit(post.getUserId(), "post", post.getId(), false, reason);
         publishIndexEvent(post.getId(), PostSearchIndexEvent.Action.DELETE);
+        contentCacheManager.bumpPostGeneration();
         return toPostVO(post);
     }
 
@@ -304,6 +314,7 @@ public class AdminManagementServiceImpl implements AdminManagementService {
         if (PostStatus.PUBLISHED.getCode().equals(post.getStatus())) {
             publishIndexEvent(post.getId(), PostSearchIndexEvent.Action.UPSERT);
         }
+        contentCacheManager.bumpPostGeneration();
         return toPostVO(post);
     }
 
@@ -316,6 +327,7 @@ public class AdminManagementServiceImpl implements AdminManagementService {
             syncBoardPostCount(post.getBoardId());
         }
         publishIndexEvent(id, PostSearchIndexEvent.Action.DELETE);
+        contentCacheManager.bumpPostGeneration();
     }
 
     private PageResult<AdminPostVO> listPostsByQuery(AdminPostQueryDTO query, Integer forcedStatus) {

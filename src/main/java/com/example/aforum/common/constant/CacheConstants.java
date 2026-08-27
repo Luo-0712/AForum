@@ -37,4 +37,10 @@ public class CacheConstants {
 
     /** 验证码过期时间（秒） */
     public static final long CAPTCHA_EXPIRE_SECONDS = 300;
+
+    /** Shared generation used by cached public post data. */
+    public static final String POST_GENERATION_KEY = "post-generation";
+
+    /** Direct cache entry for active categories and boards. */
+    public static final String SEARCH_OPTIONS_CACHE_KEY = "search-options";
 }

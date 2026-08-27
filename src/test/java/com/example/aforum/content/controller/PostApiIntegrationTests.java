@@ -106,7 +106,7 @@ class PostApiIntegrationTests {
 
         String postId = rejected.path("data").path("id").asText();
         JsonNode hiddenDetail = readJson(mockMvc.perform(get("/api/posts/{id}", postId))
-                .andExpect(status().isOk())
+                .andExpect(status().isNotFound())
                 .andReturn());
 
         assertThat(hiddenDetail.path("code").asInt()).isEqualTo(404);
